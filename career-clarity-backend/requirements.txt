@@ -1,0 +1,11 @@
+asgiref==3.11.1
+Django==5.0.4
+djangorestframework==3.16.1
+django-cors-headers==4.9.0
+pdfplumber==0.11.9
+sqlparse==0.5.5
+tzdata==2025.3
+spacy==3.7.4
+djangorestframework-simplejwt==5.3.1
+easyocr==1.7.1
+opencv-python-headless==4.11.0.86

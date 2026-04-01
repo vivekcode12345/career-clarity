@@ -1,0 +1,111 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cc-bg: #f7f9ff;
+  --cc-ink: #0f172a;
+  --cc-primary: #4f46e5;
+  --cc-accent: #0ea5e9;
+}
+
+body {
+  margin: 0;
+  font-family: Manrope, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  background: radial-gradient(circle at 12% -10%, rgba(99, 102, 241, 0.18), transparent 35%),
+    radial-gradient(circle at 100% 20%, rgba(14, 165, 233, 0.16), transparent 32%),
+    var(--cc-bg);
+  color: var(--cc-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(99, 102, 241, 0);
+  }
+}
+
+@layer components {
+  .cc-surface {
+    @apply rounded-2xl bg-white/95 backdrop-blur-xl ring-1 ring-indigo-100/80 shadow-[0_12px_40px_-18px_rgba(37,99,235,0.45)] transition-all duration-300;
+  }
+
+  .cc-input {
+    @apply w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:shadow-[0_0_12px_rgba(79,70,229,0.1)];
+  }
+
+  .cc-heading {
+    font-family: Sora, Manrope, sans-serif;
+    @apply tracking-tight;
+  }
+
+  .cc-cta {
+    @apply rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_24px_rgba(59,130,246,0.4)] hover:opacity-90 active:scale-95;
+  }
+
+  .cc-subtle-card {
+    @apply rounded-xl border border-indigo-100/80 bg-gradient-to-br from-white to-indigo-50/40 p-4 shadow-sm transition-all duration-300 hover:shadow-md hover:border-indigo-200;
+  }
+
+  .cc-fade-in {
+    animation: fadeInUp 0.5s ease-out backwards;
+  }
+
+  .cc-slide-in {
+    animation: slideInRight 0.4s ease-out backwards;
+  }
+
+  .cc-pulse {
+    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .cc-glow {
+    animation: glow-pulse 2s infinite;
+  }
+}
