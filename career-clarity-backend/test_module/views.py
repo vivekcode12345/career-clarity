@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import Question , TestResult
+from .models import Question , TestResult ,SkillTestResult
 import random
 
 
@@ -96,4 +96,128 @@ def submit_quick_test(request):
 
     return Response({
         "message": "Test submitted successfully"
+    })
+
+def get_user_skill(user):
+    from cv_module.models import CVProfile
+
+    try:
+        cv = CVProfile.objects.get(user=user)
+        skills = cv.skills
+        if isinstance(skills, list) and skills:
+            return str(random.choice(skills)).strip().lower()
+        if isinstance(skills, str) and skills.strip():
+            return skills.strip().lower()
+    except Exception:
+        pass
+
+    return "aptitude"
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_skill_test(request):
+    user = request.user
+
+    # STEP 1: Get skill
+    skill = get_user_skill(user)
+
+    # STEP 2: Fetch existing questions
+    questions = Question.objects.filter(
+        type="skill",
+        category=skill,
+        difficulty__in=["medium", "hard"]
+    )
+
+    current_count = questions.count()
+
+    # STEP 3: Ensure 15 questions using AI
+    if current_count < 15:
+        from .ai_utils import generate_and_save_questions
+        generate_and_save_questions(skill, 15, current_count)
+
+    # STEP 4: Fetch again after AI generation
+    questions = Question.objects.filter(
+        type="skill",
+        category=skill,
+        difficulty__in=["medium", "hard"]
+    )
+
+    if questions.count() < 15:
+        return Response({
+            "skill": skill,
+            "questions": [],
+            "message": "Unable to generate enough questions"
+        })
+
+    # STEP 5: Select exactly 15
+    selected = random.sample(list(questions), 15)
+
+    # STEP 6: Format response
+    data = []
+    for q in selected:
+        data.append({
+            "id": q.id,
+            "question": q.question_text,
+            "options": {
+                "A": q.option_a,
+                "B": q.option_b,
+                "C": q.option_c,
+                "D": q.option_d,
+            }
+        })
+
+    return Response({
+        "skill": skill,
+        "total_questions": 15,
+        "questions": data
+    })
+def get_skill_level(score, total):
+    percentage = (score / total) * 100
+
+    if percentage >= 75:
+        return "advanced"
+    elif percentage >= 40:
+        return "intermediate"
+    else:
+        return "beginner"
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_skill_test(request):
+    user = request.user
+
+    answers = request.data.get("answers", {})
+    skill = request.data.get("skill", "unknown")
+
+    if not answers:
+        return Response({"error": "No answers provided"}, status=400)
+
+    score = 0
+    total = len(answers)
+
+    questions = Question.objects.filter(id__in=answers.keys())
+
+    for q in questions:
+        user_answer = answers.get(str(q.id))
+
+        if user_answer == q.correct_answer:
+            score += 1
+
+    # Calculate level
+    level = get_skill_level(score, total)
+
+    # Save result
+    SkillTestResult.objects.create(
+        user=user,
+        skill=skill,
+        score=score,
+        total=total,
+        level=level
+    )
+
+    return Response({
+        "score": score,
+        "total": total,
+        "level": level,
+        "message": f"You are {level} in {skill}"
     })
