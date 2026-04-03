@@ -12,8 +12,20 @@ export const submitQuickTest = async (answers) => {
   return res.data;
 };
 
-export const getSkillTest = async () => {
-  const res = await api.get("/test/skill/");
+export const getSkillTest = async (skill) => {
+  const res = await api.get("/test/skill/", {
+    params: { skill }
+  });
+  return res.data;
+};
+
+export const getSkillCooldownStatus = async () => {
+  const res = await api.get("/test/skill/cooldown/");
+  return res.data;
+};
+
+export const getSkillOptions = async () => {
+  const res = await api.get("/test/skill/options/");
   return res.data;
 };
 

@@ -3,6 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Question , TestResult ,SkillTestResult
 import random
+from django.utils import timezone
+from datetime import timedelta
 
 
 
@@ -114,13 +116,127 @@ def get_user_skill(user):
     return "aptitude"
 
 
+def _normalize_skill(skill):
+    return str(skill or "").strip().lower()
+
+
+def _last_skill_attempt(user, skill):
+    return SkillTestResult.objects.filter(user=user, skill=_normalize_skill(skill)).order_by("-created_at").first()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_skill_options(request):
+    user = request.user
+    from cv_module.models import CVProfile
+
+    try:
+        cv = CVProfile.objects.get(user=user)
+        raw_skills = cv.skills or []
+    except CVProfile.DoesNotExist:
+        raw_skills = []
+
+    if isinstance(raw_skills, str):
+        raw_skills = [raw_skills]
+
+    normalized = []
+    seen = set()
+    for item in raw_skills:
+        value = _normalize_skill(item)
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        normalized.append(value)
+
+    return Response({
+        "skills": normalized,
+        "count": len(normalized),
+    })
+
+
+def _cooldown_response(last_attempt):
+    cooldown_until = last_attempt.created_at + timedelta(hours=24)
+    remaining = cooldown_until - timezone.now()
+
+    remaining_seconds = max(int(remaining.total_seconds()), 0)
+    remaining_hours = remaining_seconds // 3600
+    remaining_minutes = (remaining_seconds % 3600) // 60
+
+    skill = _normalize_skill(last_attempt.skill)
+    return Response(
+        {
+            "cooldown": True,
+            "skill": skill,
+            "message": f"You can retake the {skill} test after {remaining_hours}h {remaining_minutes}m.",
+            "cooldown_until": cooldown_until.isoformat(),
+            "remaining_seconds": remaining_seconds,
+        },
+        status=429,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_skill_cooldown_status(request):
+    user = request.user
+    skill_param = _normalize_skill(request.query_params.get('skill'))
+
+    queryset = SkillTestResult.objects.filter(user=user)
+    if skill_param:
+        queryset = queryset.filter(skill=skill_param)
+
+    latest_by_skill = {}
+    for attempt in queryset.order_by("skill", "-created_at"):
+        key = _normalize_skill(attempt.skill)
+        if key and key not in latest_by_skill:
+            latest_by_skill[key] = attempt
+
+    cooldown_by_skill = {}
+    now = timezone.now()
+    for skill, attempt in latest_by_skill.items():
+        cooldown_until = attempt.created_at + timedelta(hours=24)
+        if now >= cooldown_until:
+            continue
+
+        remaining = cooldown_until - now
+        remaining_seconds = max(int(remaining.total_seconds()), 0)
+        remaining_hours = remaining_seconds // 3600
+        remaining_minutes = (remaining_seconds % 3600) // 60
+
+        cooldown_by_skill[skill] = {
+            "cooldown": True,
+            "remaining_seconds": remaining_seconds,
+            "cooldown_until": cooldown_until.isoformat(),
+            "message": f"Cooldown remaining time: {remaining_hours}h {remaining_minutes}m",
+        }
+
+    if skill_param:
+        skill_payload = cooldown_by_skill.get(
+            skill_param,
+            {"cooldown": False, "remaining_seconds": 0, "message": "Skill test is available."},
+        )
+        return Response({"skill": skill_param, **skill_payload})
+
+    return Response({
+        "cooldown": bool(cooldown_by_skill),
+        "cooldown_by_skill": cooldown_by_skill,
+        "message": "Per-skill cooldown status loaded.",
+    })
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_skill_test(request):
     user = request.user
 
-    # STEP 1: Get skill
-    skill = get_user_skill(user)
+    # STEP 1: Get skill - first check if provided in request, otherwise from user's CV
+    skill = _normalize_skill(request.query_params.get('skill'))
+    if not skill:
+        skill = _normalize_skill(get_user_skill(user))
+
+    last_attempt = _last_skill_attempt(user, skill)
+    if last_attempt and timezone.now() < (last_attempt.created_at + timedelta(hours=24)):
+        return _cooldown_response(last_attempt)
 
     # STEP 2: Fetch existing questions
     questions = Question.objects.filter(
@@ -186,8 +302,13 @@ def get_skill_level(score, total):
 def submit_skill_test(request):
     user = request.user
 
+    skill = _normalize_skill(request.data.get("skill", "unknown"))
+
+    last_attempt = _last_skill_attempt(user, skill)
+    if last_attempt and timezone.now() < (last_attempt.created_at + timedelta(hours=24)):
+        return _cooldown_response(last_attempt)
+
     answers = request.data.get("answers", {})
-    skill = request.data.get("skill", "unknown")
 
     if not answers:
         return Response({"error": "No answers provided"}, status=400)

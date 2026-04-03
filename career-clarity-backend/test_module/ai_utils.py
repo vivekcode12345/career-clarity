@@ -8,8 +8,15 @@ import random
 
 load_dotenv()
 
-API_KEY = os.getenv("OPENROUTER_API_KEY")
 logger = logging.getLogger(__name__)
+MODELS = [
+    "mistralai/mixtral-8x7b-instruct",
+    "meta-llama/llama-3.1-8b-instruct",
+]
+
+
+def _get_api_key():
+    return os.getenv("OPENROUTER_API_KEY")
 
 
 def build_prompt(skill, num_questions):
@@ -22,6 +29,7 @@ Rules:
 - Difficulty: medium to hard
 - Avoid duplicate questions
 - Return ONLY JSON
+- Do not include markdown code fences
 
 Format:
 [
@@ -49,7 +57,14 @@ def _extract_json_array(content):
 
     try:
         parsed = json.loads(cleaned)
-        return parsed if isinstance(parsed, list) else []
+        if isinstance(parsed, list):
+            return parsed
+        if isinstance(parsed, dict):
+            if isinstance(parsed.get("questions"), list):
+                return parsed["questions"]
+            if isinstance(parsed.get("data"), list):
+                return parsed["data"]
+        return []
     except json.JSONDecodeError:
         start = cleaned.find("[")
         end = cleaned.rfind("]")
@@ -121,21 +136,23 @@ def _save_questions(skill, question_items, needed):
     return created
 
 
-def call_ai(prompt):
-    if not API_KEY:
+def call_ai(prompt, model):
+    api_key = _get_api_key()
+    if not api_key:
         return None
 
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
         headers={
-            "Authorization": f"Bearer {API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         },
         json={
-            "model": "mistralai/mixtral-8x7b-instruct",
+            "model": model,
             "messages": [
                 {"role": "user", "content": prompt}
-            ]
+            ],
+            "temperature": 0.2,
         },
         timeout=25
     )
@@ -147,7 +164,15 @@ def call_ai(prompt):
         return None
 
     message = choices[0].get("message") or {}
-    return message.get("content")
+    content = message.get("content")
+    if isinstance(content, list):
+        text_parts = [
+            part.get("text", "")
+            for part in content
+            if isinstance(part, dict)
+        ]
+        return "\n".join(text_parts)
+    return content
 
 
 def generate_and_save_questions(skill, required=15, current_count=0):
@@ -158,19 +183,36 @@ def generate_and_save_questions(skill, required=15, current_count=0):
             return True
 
         created = 0
+        attempts = 0
+        max_attempts = 5
 
-        if API_KEY:
-            prompt = build_prompt(skill, needed)
-            ai_response = call_ai(prompt)
-            ai_questions = _extract_json_array(ai_response)
-            created += _save_questions(skill, ai_questions, needed)
+        if _get_api_key():
+            while created < needed and attempts < max_attempts:
+                attempts += 1
+                remaining = needed - created
+                prompt = build_prompt(skill, min(max(remaining + 2, 5), 25))
+                model = MODELS[(attempts - 1) % len(MODELS)]
+
+                ai_response = call_ai(prompt, model)
+                ai_questions = _extract_json_array(ai_response)
+                created_now = _save_questions(skill, ai_questions, remaining)
+                created += created_now
+
+                if created_now == 0:
+                    logger.warning(
+                        "No valid questions created for skill=%s on attempt=%s model=%s",
+                        skill,
+                        attempts,
+                        model,
+                    )
 
         if created < needed:
             logger.warning(
-                "Skill question generation incomplete for %s. Needed=%s, created=%s",
+                "Skill question generation incomplete for %s. Needed=%s, created=%s, attempts=%s",
                 skill,
                 needed,
                 created,
+                attempts,
             )
             return False
 

@@ -181,10 +181,10 @@ const ResultPage = ({ result, testType = "quick" }) => {
           ) : (
             <>
               <button
-                onClick={() => navigate("/quick-test")}
+                onClick={() => navigate("/recommendations")}
                 className="w-full bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white font-bold py-3 rounded-lg transition-all shadow-lg hover:shadow-xl"
               >
-                ✨ Take Skill Test
+                💼 Show Recommendations
               </button>
               <button
                 onClick={() => navigate("/dashboard")}

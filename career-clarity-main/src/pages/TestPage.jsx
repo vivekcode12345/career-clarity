@@ -1,112 +1,143 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QuestionCard from "../components/QuestionCard";
 import TestResultPage from "./TestResultPage";
-import {
-  getQuickTest,
-  submitQuickTest,
-  getSkillTest,
-  submitSkillTest,
-} from "../services/testService";
+import SkillsSelectionPage from "./SkillsSelectionPage";
+import SystemCheckPage from "./SystemCheckPage";
+import { getQuickTest, submitQuickTest, getSkillTest, submitSkillTest, getSkillCooldownStatus, getSkillOptions } from "../services/testService";
 
-/**
- * TestPage Component
- * Main test orchestration component
- * Handles both Quick Test and Skill Test flows
- * Includes security features: fullscreen, copy/paste prevention, tab switch detection
- */
+const WARNING_DURATION_MS = 2500;
+const QUICK_TEST_DURATION_SECONDS = 10 * 60;
+const SKILL_TEST_DURATION_SECONDS = 20 * 60;
+
 const TestPage = () => {
   const navigate = useNavigate();
 
-  // State Management
-  const [testState, setTestState] = useState("loading"); // loading, quickTest, skillTest, result
-  const [quickTestAttempted, setQuickTestAttempted] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [page, setPage] = useState("loading");
   const [questions, setQuestions] = useState([]);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [selectedSkill, setSelectedSkill] = useState("");
   const [result, setResult] = useState(null);
-  const [currentTestType, setCurrentTestType] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [timer, setTimer] = useState(null);
-  const [timeRemaining, setTimeRemaining] = useState(null);
-  const [showWarning, setShowWarning] = useState(false);
+  const [error, setError] = useState("");
+  const [timeRemaining, setTimeRemaining] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [skillTestStarted, setSkillTestStarted] = useState(false);
+  const [showSecurityWarning, setShowSecurityWarning] = useState(false);
+  const [availableSkills, setAvailableSkills] = useState([]);
+  const [cooldownInfo, setCooldownInfo] = useState({
+    cooldown: false,
+    cooldown_by_skill: {},
+    message: "",
+  });
 
-  const pageRef = useRef();
-  const timerIntervalRef = useRef(null);
-  const tabVisibilityRef = useRef(true);
+  const timerRef = useRef(null);
+  const warningRef = useRef(null);
 
-  // Initialize test on component mount
+  const isSkillTestPage = page === "skillTest";
+
   useEffect(() => {
     checkTestStatus();
-    setupSecurityFeatures();
-
     return () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      stopTimer();
+      clearWarningTimer();
       exitFullscreen();
     };
   }, []);
 
-  // Check which test to display
-  const checkTestStatus = async () => {
-    try {
-      setLoading(true);
-      const quickTestData = await getQuickTest();
+  useEffect(() => {
+    if (!isSkillTestPage) return undefined;
 
-      if (quickTestData.attempted) {
-        setQuickTestAttempted(true);
-        initializeSkillTest();
-      } else {
-        setQuickTestAttempted(false);
-        initializeQuickTest(quickTestData);
+    const triggerWarning = () => {
+      setShowSecurityWarning(true);
+      clearWarningTimer();
+      warningRef.current = setTimeout(() => setShowSecurityWarning(false), WARNING_DURATION_MS);
+    };
+
+    const onCopy = (event) => {
+      event.preventDefault();
+      triggerWarning();
+    };
+
+    const onPaste = (event) => {
+      event.preventDefault();
+      triggerWarning();
+    };
+
+    const onCut = (event) => {
+      event.preventDefault();
+      triggerWarning();
+    };
+
+    const onContextMenu = (event) => {
+      event.preventDefault();
+      triggerWarning();
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        triggerWarning();
       }
-    } catch (err) {
-      console.error("Error checking test status:", err);
-      setError("Failed to load test. Please try again.");
-      setTestState("error");
-    } finally {
-      setLoading(false);
+    };
+
+    const onBlur = () => {
+      triggerWarning();
+    };
+
+    const onKeyDown = (event) => {
+      const key = event.key.toLowerCase();
+      const blockedCombo =
+        (event.ctrlKey && ["c", "v", "x", "a", "p", "s", "u"].includes(key)) ||
+        (event.metaKey && ["c", "v", "x", "a", "p", "s", "u"].includes(key)) ||
+        (event.altKey && key === "tab");
+
+      if (blockedCombo) {
+        event.preventDefault();
+        triggerWarning();
+      }
+    };
+
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("paste", onPaste);
+    document.addEventListener("cut", onCut);
+    document.addEventListener("contextmenu", onContextMenu);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("paste", onPaste);
+      document.removeEventListener("cut", onCut);
+      document.removeEventListener("contextmenu", onContextMenu);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isSkillTestPage]);
+
+  const clearWarningTimer = () => {
+    if (warningRef.current) {
+      clearTimeout(warningRef.current);
+      warningRef.current = null;
     }
   };
 
-  // Initialize Quick Test
-  const initializeQuickTest = (data) => {
-    setQuestions(data.questions || []);
-    setCurrentTestType("quick");
-    setTestState("quickTest");
-    setCurrentQuestion(0);
-    setAnswers({});
-    startTimer(30 * 60); // 30 minutes
-  };
-
-  // Initialize Skill Test
-  const initializeSkillTest = async () => {
-    try {
-      const skillTestData = await getSkillTest();
-      setQuestions(skillTestData.questions || []);
-      setCurrentTestType("skill");
-      setTestState("skillTest");
-      setCurrentQuestion(0);
-      setAnswers({});
-      startTimer(45 * 60); // 45 minutes
-    } catch (err) {
-      console.error("Error loading skill test:", err);
-      setError("Failed to load skill test. Please try again.");
-      setTestState("error");
+  const stopTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
   };
 
-  // Start test timer
   const startTimer = (seconds) => {
+    stopTimer();
     setTimeRemaining(seconds);
-    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
 
-    timerIntervalRef.current = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
-          clearInterval(timerIntervalRef.current);
+          stopTimer();
           handleAutoSubmit();
           return 0;
         }
@@ -115,230 +146,205 @@ const TestPage = () => {
     }, 1000);
   };
 
-  // Format time display
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
-  // Setup Security Features
-  const setupSecurityFeatures = () => {
-    // Disable right-click
-    const handleContextMenu = (e) => {
-      if (skillTestStarted) {
-        e.preventDefault();
-        alert("Right-click is disabled during the test.");
-      }
-    };
-
-    // Disable copy/paste
-    const handleCopyPaste = (e) => {
-      if (skillTestStarted) {
-        e.preventDefault();
-        alert("Copy and paste are disabled during the test.");
-      }
-    };
-
-    // Detect tab switching
-    const handleVisibilityChange = () => {
-      if (document.hidden && skillTestStarted) {
-        setShowWarning(true);
-        setTimeout(() => setShowWarning(false), 3000);
-      }
-    };
-
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("copy", handleCopyPaste);
-    document.addEventListener("paste", handleCopyPaste);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("copy", handleCopyPaste);
-      document.removeEventListener("paste", handleCopyPaste);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  };
-
-  // Enter Fullscreen - Skill Test
-  const enterFullscreen = async () => {
-    try {
-      if (pageRef.current.requestFullscreen) {
-        await pageRef.current.requestFullscreen();
-        setIsFullscreen(true);
-        setSkillTestStarted(true);
-      }
-    } catch (err) {
-      console.error("Error entering fullscreen:", err);
-      alert("Could not enter fullscreen mode. Please try again.");
-    }
-  };
-
-  // Exit Fullscreen
-  const exitFullscreen = async () => {
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-        setIsFullscreen(false);
-      }
-    } catch (err) {
-      console.error("Error exiting fullscreen:", err);
-    }
-  };
-
-  // Start Skill Test with Fullscreen
-  const handleStartSkillTest = async () => {
-    await enterFullscreen();
-  };
-
-  // Handle answer selection
-  const handleSelectAnswer = (option) => {
-    const questionId = questions[currentQuestion].id;
-    setAnswers({
-      ...answers,
-      [questionId]: option,
-    });
-  };
-
-  // Navigate to next question
-  const handleNext = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    }
-  };
-
-  // Navigate to previous question
-  const handlePrevious = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
-  };
-
-  // Submit test
-  const handleSubmitTest = async () => {
-    if (!confirm(
-      "Are you sure you want to submit the test? You cannot change your answers after submission."
-    )) {
-      return;
-    }
-
+  const checkTestStatus = async () => {
     try {
       setLoading(true);
+      const quickTestData = await getQuickTest();
 
-      let submitResponse;
-
-      if (currentTestType === "quick") {
-        submitResponse = await submitQuickTest(answers);
-      } else {
-        const skillFromQuestions = questions[0]?.skill || "unknown";
-        submitResponse = await submitSkillTest(answers, skillFromQuestions);
+      if (quickTestData?.attempted) {
+        await loadCooldownStatus();
+        await loadSkillOptions();
+        setPage("skillsSelection");
+        return;
       }
 
-      setResult(submitResponse);
-      setTestState("result");
-
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      if (isFullscreen) await exitFullscreen();
+      setQuestions(quickTestData?.questions || []);
+      setCurrentQuestion(0);
+      setAnswers({});
+      setPage("quickTest");
+      startTimer(QUICK_TEST_DURATION_SECONDS);
     } catch (err) {
-      console.error("Error submitting test:", err);
-      setError("Failed to submit test. Please try again.");
+      setError("Failed to load test.");
+      setPage("error");
     } finally {
       setLoading(false);
     }
   };
 
-  // Auto-submit when time runs out
+  const loadCooldownStatus = async () => {
+    try {
+      const cooldownData = await getSkillCooldownStatus();
+      setCooldownInfo({
+        cooldown: Boolean(cooldownData?.cooldown),
+        cooldown_by_skill: cooldownData?.cooldown_by_skill || {},
+        message: cooldownData?.message || "",
+      });
+    } catch {
+      setCooldownInfo({
+        cooldown: false,
+        cooldown_by_skill: {},
+        message: "",
+      });
+    }
+  };
+
+  const loadSkillOptions = async () => {
+    try {
+      const options = await getSkillOptions();
+      const skills = Array.isArray(options?.skills) ? options.skills : [];
+      setAvailableSkills(skills);
+    } catch {
+      setAvailableSkills([]);
+    }
+  };
+
+  const enterFullscreen = async () => {
+    const element = document.documentElement;
+    try {
+      if (element.requestFullscreen) {
+        await element.requestFullscreen();
+      } else if (element.webkitRequestFullscreen) {
+        element.webkitRequestFullscreen();
+      } else if (element.msRequestFullscreen) {
+        element.msRequestFullscreen();
+      }
+      setIsFullscreen(true);
+      return true;
+    } catch (err) {
+      setIsFullscreen(false);
+      setError("Could not enter fullscreen mode. Please allow fullscreen and try again.");
+      return false;
+    }
+  };
+
+  const exitFullscreen = async () => {
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msFullscreenElement && document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    } catch {
+    } finally {
+      setIsFullscreen(false);
+    }
+  };
+
+  const handleSkillSelect = (skill) => {
+    setSelectedSkill(skill);
+    setPage("systemCheck");
+  };
+
+  const handleSystemCheckComplete = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const entered = await enterFullscreen();
+      if (!entered) {
+        setPage("systemCheck");
+        return;
+      }
+
+      const skillTestData = await getSkillTest(selectedSkill);
+      if (!skillTestData?.questions?.length) {
+        setError(skillTestData?.message || "No questions available for this skill.");
+        setPage("error");
+        return;
+      }
+
+      setQuestions(skillTestData.questions);
+      setCurrentQuestion(0);
+      setAnswers({});
+      setPage("skillTest");
+      startTimer(SKILL_TEST_DURATION_SECONDS);
+    } catch (err) {
+      const message = err?.response?.data?.message || "Failed to load skill test questions.";
+      setError(message);
+      setPage("error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectAnswer = (option) => {
+    const questionId = questions[currentQuestion]?.id;
+    if (!questionId) return;
+
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: option,
+    }));
+  };
+
+  const handleSubmitTest = async () => {
+    try {
+      setLoading(true);
+
+      if (page === "quickTest") {
+        await submitQuickTest(answers);
+        stopTimer();
+        setQuestions([]);
+        setAnswers({});
+        setCurrentQuestion(0);
+        await loadCooldownStatus();
+        await loadSkillOptions();
+        setPage("skillsSelection");
+        return;
+      }
+
+      if (page === "skillTest") {
+        const submitResponse = await submitSkillTest(answers, selectedSkill);
+        stopTimer();
+        await exitFullscreen();
+        setResult(submitResponse);
+        setPage("result");
+      }
+    } catch (err) {
+      const message = err?.response?.data?.message || "Failed to submit test.";
+      setError(message);
+      setPage("error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAutoSubmit = () => {
-    alert("Time's up! Your test will be submitted now.");
     handleSubmitTest();
   };
 
-  // Show skill test warning modal
-  const SkillTestWarningModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-8 max-w-md mx-auto shadow-2xl cc-fade-in">
-        <div className="text-center mb-6">
-          <div className="text-5xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Before You Start</h2>
-          <p className="text-slate-600">Important test guidelines</p>
-        </div>
-
-        <div className="space-y-4 mb-8">
-          <div className="flex items-start space-x-3">
-            <span className="text-xl">🚫</span>
-            <p className="text-slate-700">Do not switch tabs or minimize the window</p>
-          </div>
-          <div className="flex items-start space-x-3">
-            <span className="text-xl">🚫</span>
-            <p className="text-slate-700">Do not copy or paste content</p>
-          </div>
-          <div className="flex items-start space-x-3">
-            <span className="text-xl">🚫</span>
-            <p className="text-slate-700">Do not right-click during the test</p>
-          </div>
-          <div className="flex items-start space-x-3">
-            <span className="text-xl">⏱️</span>
-            <p className="text-slate-700">You have 45 minutes to complete 15 questions</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <button
-            onClick={handleStartSkillTest}
-            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold py-3 rounded-lg transition-all"
-          >
-            ✨ Start Test
-          </button>
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="w-full bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold py-3 rounded-lg transition-all"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
+  const SecurityWarning = () => (
+    <div className="fixed top-4 right-4 z-50 rounded-lg bg-red-600 px-5 py-3 text-white shadow-xl">
+      <p className="font-semibold">Security Warning</p>
+      <p className="text-sm">Restricted action detected. Stay on the test page.</p>
     </div>
   );
 
-  // Show tab switch warning
-  const TabSwitchWarning = () => (
-    <div className="fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg cc-fade-in">
-      <div className="flex items-center space-x-3">
-        <span className="text-2xl">⚠️</span>
-        <div>
-          <div className="font-bold">Tab Switch Detected!</div>
-          <div className="text-sm">Stay focused on the test</div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Loading State
-  if (loading && testState === "loading") {
+  if (loading && page === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="text-center">
-          <div className="inline-block mb-4">
-            <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-          </div>
-          <p className="text-slate-600 font-medium">Loading test...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-slate-700">Loading test...</p>
       </div>
     );
   }
 
-  // Error State
-  if (testState === "error") {
+  if (page === "error") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="text-6xl mb-4">❌</div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-3">Error</h2>
-          <p className="text-slate-600 mb-6">{error}</p>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md rounded-xl bg-white p-6 shadow-lg">
+          <h2 className="text-xl font-bold text-slate-900">Error</h2>
+          <p className="mt-2 text-slate-600">{error}</p>
           <button
             onClick={() => navigate("/dashboard")}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-all"
+            className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white"
           >
             Back to Dashboard
           </button>
@@ -347,247 +353,173 @@ const TestPage = () => {
     );
   }
 
-  // Result State
-  if (testState === "result") {
-    return <TestResultPage result={result} testType={currentTestType} />;
+  if (page === "result") {
+    return <TestResultPage result={result} testType="skill" />;
   }
 
-  // Quick Test State
-  if (testState === "quickTest" && questions.length > 0) {
-    const question = questions[currentQuestion];
-    const selectedAnswer = answers[question.id];
+  if (page === "skillsSelection") {
+    return <SkillsSelectionPage onSkillSelect={handleSkillSelect} cooldownInfo={cooldownInfo} availableSkills={availableSkills} />;
+  }
 
+  if (page === "systemCheck") {
     return (
-      <div
-        ref={pageRef}
-        className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4"
-      >
-        <div className="max-w-3xl mx-auto">
-          {/* Header */}
-          <div className="mb-8 cc-fade-in">
-            <div className="flex items-center justify-between mb-6">
+      <SystemCheckPage
+        skillName={selectedSkill}
+        onCheckComplete={handleSystemCheckComplete}
+        onCancel={() => setPage("skillsSelection")}
+      />
+    );
+  }
+
+  if (page === "quickTest" && questions.length > 0) {
+    const question = questions[currentQuestion];
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 px-4 py-8">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-6 rounded-2xl bg-white/90 border border-white shadow-xl p-6 backdrop-blur">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-slate-900">📝 Quick Test</h1>
-                <p className="text-slate-600 mt-1">Test your general knowledge</p>
+                <p className="text-slate-600 mt-1">Answer all questions to unlock skill tests • 10 minutes</p>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-bold text-indigo-600">{formatTime(timeRemaining || 0)}</div>
-                <div className="text-sm text-slate-600">Time remaining</div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Time remaining</p>
+                <p className="text-2xl font-semibold text-indigo-700">{formatTime(timeRemaining)}</p>
               </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {questions.map((item, index) => (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentQuestion(index)}
+                  className={`h-8 w-8 rounded-md text-xs font-semibold transition ${
+                    index === currentQuestion
+                      ? "bg-indigo-600 text-white"
+                      : answers[item.id]
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {index + 1}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Question Card */}
-          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+          <div className="rounded-2xl bg-white p-6 md:p-8 shadow-xl border border-slate-100">
             <QuestionCard
               question={question}
               questionNumber={currentQuestion + 1}
               totalQuestions={questions.length}
-              selectedAnswer={selectedAnswer}
+              selectedAnswer={answers[question.id]}
               onSelectAnswer={handleSelectAnswer}
+              theme="light"
             />
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="flex justify-between gap-4 cc-fade-in">
+          <div className="mt-6 flex gap-4">
             <button
-              onClick={handlePrevious}
+              onClick={() => setCurrentQuestion((value) => Math.max(value - 1, 0))}
               disabled={currentQuestion === 0}
-              className="flex-1 bg-white border-2 border-slate-200 text-slate-900 font-bold py-3 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="flex-1 rounded-lg border border-slate-300 bg-white py-3 font-semibold disabled:opacity-50"
             >
-              ← Previous
+              Previous
             </button>
-
             {currentQuestion === questions.length - 1 ? (
               <button
                 onClick={handleSubmitTest}
-                disabled={loading || Object.keys(answers).length !== questions.length}
-                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+                disabled={loading}
+                className="flex-1 rounded-lg bg-emerald-600 py-3 font-semibold text-white"
               >
-                {loading ? "Submitting..." : "Submit Test ✓"}
+                  Submit Quick Test
               </button>
             ) : (
               <button
-                onClick={handleNext}
-                className="flex-1 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                onClick={() => setCurrentQuestion((value) => Math.min(value + 1, questions.length - 1))}
+                className="flex-1 rounded-lg bg-indigo-600 py-3 font-semibold text-white"
               >
-                Next →
+                Next
               </button>
             )}
-          </div>
-
-          {/* Answer Summary */}
-          <div className="mt-8 bg-white rounded-lg shadow p-4 cc-fade-in">
-            <div className="text-sm text-slate-600 mb-3">
-              Answered: {Object.keys(answers).length} / {questions.length}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {questions.map((q, idx) => (
-                <button
-                  key={q.id}
-                  onClick={() => setCurrentQuestion(idx)}
-                  className={`w-8 h-8 rounded text-sm font-bold transition-all ${
-                    idx === currentQuestion
-                      ? "bg-indigo-600 text-white"
-                      : answers[q.id]
-                      ? "bg-green-500 text-white"
-                      : "bg-slate-200 text-slate-600"
-                  }`}
-                >
-                  {idx + 1}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Skill Test - Warning Before Start
-  if (testState === "skillTest" && !skillTestStarted && questions.length > 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
-        <SkillTestWarningModal />
-      </div>
-    );
-  }
-
-  // Skill Test - During Test
-  if (testState === "skillTest" && skillTestStarted && questions.length > 0) {
+  if (page === "skillTest" && questions.length > 0) {
     const question = questions[currentQuestion];
-    const selectedAnswer = answers[question.id];
-
     return (
-      <div
-        ref={pageRef}
-        className={`min-h-screen ${
-          isFullscreen
-            ? "bg-gradient-to-br from-blue-900 to-indigo-900"
-            : "bg-gradient-to-br from-slate-50 to-slate-100"
-        } py-8 px-4`}
-      >
-        {showWarning && <TabSwitchWarning />}
+      <div className={`min-h-screen px-4 py-8 ${isFullscreen ? "bg-slate-900" : "bg-slate-100"}`}>
+        {showSecurityWarning && <SecurityWarning />}
 
-        <div className="max-w-3xl mx-auto">
-          {/* Header with Timer */}
-          <div className={`mb-8 cc-fade-in ${isFullscreen ? "text-white" : ""}`}>
-            <div className="flex items-center justify-between mb-6">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-6 rounded-2xl border border-blue-500/40 bg-slate-800/90 p-6 shadow-2xl">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between text-white">
               <div>
-                <h1 className="text-3xl font-bold">🎯 Skill Test</h1>
-                <p className={`mt-1 ${isFullscreen ? "text-blue-100" : "text-slate-600"}`}>
-                  15 questions • ~45 minutes
-                </p>
+                <h1 className="text-3xl font-bold">🎯 Skill Test - {selectedSkill?.toUpperCase()}</h1>
+                <p className="text-blue-100 mt-1">Security mode enabled • 15 questions</p>
               </div>
-              <div className={`text-right ${isFullscreen ? "text-white" : ""}`}>
-                <div
-                  className={`text-4xl font-bold ${
-                    timeRemaining < 300 ? "text-red-500" : "text-indigo-600"
-                  }`}
-                >
-                  {formatTime(timeRemaining || 0)}
-                </div>
-                <div className={`text-sm ${isFullscreen ? "text-blue-100" : "text-slate-600"}`}>
-                  {timeRemaining < 300 && "⚠️ Time Running Out"}
-                </div>
+              <div className="text-right">
+                <p className="text-xs uppercase tracking-wide text-blue-200">Time remaining</p>
+                <p className={`text-2xl font-semibold ${timeRemaining <= 300 ? "text-rose-300" : "text-white"}`}>{formatTime(timeRemaining)}</p>
               </div>
             </div>
-          </div>
-
-          {/* Question Card */}
-          <div
-            className={`${
-              isFullscreen ? "bg-slate-900 border-2 border-blue-400" : "bg-white shadow-lg"
-            } rounded-2xl p-8 mb-8`}
-          >
-            <QuestionCard
-              question={question}
-              questionNumber={currentQuestion + 1}
-              totalQuestions={questions.length}
-              selectedAnswer={selectedAnswer}
-              onSelectAnswer={handleSelectAnswer}
-            />
-          </div>
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between gap-4 cc-fade-in">
-            <button
-              onClick={handlePrevious}
-              disabled={currentQuestion === 0}
-              className={`flex-1 font-bold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
-                isFullscreen
-                  ? "bg-slate-700 hover:bg-slate-600 text-white"
-                  : "bg-white border-2 border-slate-200 text-slate-900 hover:bg-slate-50"
-              }`}
-            >
-              ← Previous
-            </button>
-
-            {currentQuestion === questions.length - 1 ? (
-              <button
-                onClick={handleSubmitTest}
-                disabled={loading}
-                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
-              >
-                {loading ? "Submitting..." : "Submit Test ✓"}
-              </button>
-            ) : (
-              <button
-                onClick={handleNext}
-                className={`flex-1 font-bold py-3 rounded-lg transition-all ${
-                  isFullscreen
-                    ? "bg-blue-600 hover:bg-blue-500 text-white"
-                    : "bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white shadow-lg"
-                }`}
-              >
-                Next →
-              </button>
-            )}
-          </div>
-
-          {/* Answer Summary */}
-          <div
-            className={`mt-8 rounded-lg ${
-              isFullscreen
-                ? "bg-slate-800 border border-blue-400"
-                : "bg-white shadow"
-            } p-4 cc-fade-in`}
-          >
-            <div
-              className={`text-sm mb-3 ${
-                isFullscreen ? "text-blue-200" : "text-slate-600"
-              }`}
-            >
-              Answered: {Object.keys(answers).length} / {questions.length}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {questions.map((q, idx) => (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {questions.map((item, index) => (
                 <button
-                  key={q.id}
-                  onClick={() => setCurrentQuestion(idx)}
-                  disabled={isFullscreen}
-                  className={`w-8 h-8 rounded text-sm font-bold transition-all ${
-                    idx === currentQuestion
-                      ? "bg-indigo-600 text-white"
-                      : answers[q.id]
-                      ? "bg-green-500 text-white"
-                      : isFullscreen
-                      ? "bg-slate-700 text-slate-300"
-                      : "bg-slate-200 text-slate-600"
+                  key={item.id}
+                  onClick={() => setCurrentQuestion(index)}
+                  className={`h-8 w-8 rounded-md text-xs font-semibold transition ${
+                    index === currentQuestion
+                      ? "bg-indigo-500 text-white"
+                      : answers[item.id]
+                        ? "bg-emerald-300 text-emerald-950"
+                        : "bg-slate-700 text-slate-200 hover:bg-slate-600"
                   }`}
                 >
-                  {idx + 1}
+                  {index + 1}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Fullscreen Exit Notice */}
-          {isFullscreen && (
-            <div className="mt-8 text-center text-blue-200 text-sm">
-              Press ESC to exit fullscreen (not recommended during test)
-            </div>
-          )}
+          <div className="rounded-2xl border border-blue-400 bg-slate-900 p-6 md:p-8 shadow-2xl">
+            <QuestionCard
+              question={question}
+              questionNumber={currentQuestion + 1}
+              totalQuestions={questions.length}
+              selectedAnswer={answers[question.id]}
+              onSelectAnswer={handleSelectAnswer}
+              theme="dark"
+            />
+          </div>
+
+          <div className="mt-6 flex gap-4">
+            <button
+              onClick={() => setCurrentQuestion((value) => Math.max(value - 1, 0))}
+              disabled={currentQuestion === 0}
+              className="flex-1 rounded-lg bg-slate-700 py-3 font-semibold text-white disabled:opacity-50"
+            >
+              Previous
+            </button>
+            {currentQuestion === questions.length - 1 ? (
+              <button
+                onClick={handleSubmitTest}
+                disabled={loading}
+                className="flex-1 rounded-lg bg-emerald-600 py-3 font-semibold text-white"
+              >
+                Submit Skill Test
+              </button>
+            ) : (
+              <button
+                onClick={() => setCurrentQuestion((value) => Math.min(value + 1, questions.length - 1))}
+                className="flex-1 rounded-lg bg-blue-600 py-3 font-semibold text-white"
+              >
+                Next
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

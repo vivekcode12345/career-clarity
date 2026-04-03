@@ -1,36 +1,42 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCurrentUser } from "../services/authService";
+import { getQuickTest } from "../services/testService";
 
 const actionCards = [
 	{
 		title: "Take Quick Test",
 		description: "Discover strengths with a structured career quick assessment.",
 		path: "/quick-test",
+		key: "test",
 	},
 	{
 		title: "View Recommendations",
 		description: "See personalized top career options based on your profile.",
 		path: "/recommendations",
+		key: "recommendations",
 	},
 	{
 		title: "College Finder",
 		description: "Explore colleges by location, course, and fees.",
 		path: "/college-finder",
+		key: "college",
 	},
 	{
 		title: "Alerts",
 		description: "Track deadlines, scholarships, and upcoming entrance exams.",
 		path: "/alerts",
+		key: "alerts",
 	},
 	{
 		title: "CV Analysis",
 		description: "Upload your CV and get skill-gap insights and career suggestions.",
 		path: "/cv-upload",
 		onlyGraduate: true,
+		key: "cv",
 	},
 ];
 
-// Static stat cards with emoji indicators
 const statCards = [
 	{
 		emoji: "📝",
@@ -43,6 +49,7 @@ const statCards = [
 		label: "Quick Test",
 		value: "Ready to Start",
 		color: "from-emerald-500 to-teal-400",
+		key: "test",
 	},
 	{
 		emoji: "🎯",
@@ -53,12 +60,61 @@ const statCards = [
 ];
 
 function Dashboard() {
+	const [hasCompletedQuickTest, setHasCompletedQuickTest] = useState(false);
+
+	useEffect(() => {
+		let mounted = true;
+
+		const loadQuickTestStatus = async () => {
+			try {
+				const quickTestData = await getQuickTest();
+				if (!mounted) {
+					return;
+				}
+				setHasCompletedQuickTest(Boolean(quickTestData?.attempted));
+			} catch {
+				if (mounted) {
+					setHasCompletedQuickTest(false);
+				}
+			}
+		};
+
+		loadQuickTestStatus();
+
+		return () => {
+			mounted = false;
+		};
+	}, []);
+
 	const user = getCurrentUser();
 	const userName = user?.name || "Student";
 	const educationLevel = user?.educationLevel || "Class 12";
 	const isGraduate = educationLevel === "Graduate";
 
-	const visibleCards = actionCards.filter((card) => !card.onlyGraduate || isGraduate);
+	const testAction = hasCompletedQuickTest
+		? {
+			title: "Take Skill Test",
+			description: "Choose your skill and continue with the timed skill assessment.",
+			path: "/quick-test",
+			key: "test",
+		}
+		: actionCards[0];
+
+	const visibleCards = [testAction, ...actionCards.slice(1)].filter(
+		(card) => !card.onlyGraduate || isGraduate
+	);
+
+	const visibleStatCards = statCards.map((card) => {
+		if (card.key !== "test") {
+			return card;
+		}
+
+		return {
+			...card,
+			label: hasCompletedQuickTest ? "Skill Test" : "Quick Test",
+			value: hasCompletedQuickTest ? "Ready to Start" : "Ready to Start",
+		};
+	});
 
 	return (
 		<div className="space-y-8">
@@ -95,7 +151,7 @@ function Dashboard() {
 			{/* Stat Cards Section */}
 			<section className="cc-fade-in" style={{ animationDelay: "100ms" }}>
 				<div className="grid gap-4 sm:grid-cols-3">
-					{statCards.map((stat, index) => (
+					{visibleStatCards.map((stat, index) => (
 						<div
 							key={stat.label}
 							className="cc-fade-in group rounded-2xl bg-gradient-to-br p-6 shadow-lg ring-1 ring-white/20 transition hover:shadow-xl hover:ring-white/30"
@@ -132,6 +188,7 @@ function Dashboard() {
 						// Emoji mapping for action cards
 						const emojiMap = {
 							"Take Quick Test": "🧠",
+							"Take Skill Test": "🧠",
 							"View Recommendations": "🎯",
 							"College Finder": "🏫",
 							"Alerts": "🔔",

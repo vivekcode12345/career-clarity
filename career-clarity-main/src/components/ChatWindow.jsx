@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { sendChatMessage } from "../services/chatbotService";
 import { useNavigate } from "react-router-dom";
 import { uploadCV } from "../services/resumeService";
+import { getQuickTest } from "../services/testService";
 
 const initialBotMessage = {
   id: 1,
@@ -14,6 +15,7 @@ function ChatWindow({ isOpen, onClose, userIdentity, initialMessage, onInitialMe
 
   const [inputValue, setInputValue] = useState("");
   const [isBotTyping, setIsBotTyping] = useState(false);
+  const [nextTestLabel, setNextTestLabel] = useState("Quick Test");
 
   const endRef = useRef(null);
   const inputRef = useRef(null);
@@ -39,6 +41,35 @@ function ChatWindow({ isOpen, onClose, userIdentity, initialMessage, onInitialMe
   useEffect(() => {
     if (!isOpen) return;
     inputRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    let mounted = true;
+
+    const loadNextTestLabel = async () => {
+      try {
+        const quickTestData = await getQuickTest();
+        if (!mounted) {
+          return;
+        }
+
+        setNextTestLabel(quickTestData?.attempted ? "Skill Test" : "Quick Test");
+      } catch {
+        if (mounted) {
+          setNextTestLabel("Quick Test");
+        }
+      }
+    };
+
+    loadNextTestLabel();
+
+    return () => {
+      mounted = false;
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -97,7 +128,7 @@ function ChatWindow({ isOpen, onClose, userIdentity, initialMessage, onInitialMe
       const documentLabel = isMarksCardUpload ? "marks card" : "CV";
       const uploadReply =
         detectedSkills.length > 0
-          ? `${uploadStatusMessage} I identified: ${detectedSkills.join(", ")}. Next step is to take the quick test.`
+          ? `${uploadStatusMessage} I identified: ${detectedSkills.join(", ")}. Next step is to take the ${nextTestLabel.toLowerCase()}.`
           : `${uploadStatusMessage} I couldn't infer enough skills yet. Please share your interest subjects (for example: Maths, Biology, Computer Science).`;
 
       setMessages((prev) => [
@@ -118,7 +149,7 @@ function ChatWindow({ isOpen, onClose, userIdentity, initialMessage, onInitialMe
             text: uploadReply,
             actions:
               detectedSkills.length > 0
-                ? [{ label: "Take Quick Test", route: "/quick-test" }, { label: "Close Chat", type: "close" }]
+                ? [{ label: `Take ${nextTestLabel}`, route: "/quick-test" }, { label: "Close Chat", type: "close" }]
                 : [{ label: "Upload Again", type: "upload" }, { label: "Close Chat", type: "close" }],
           },
         ]);
@@ -161,17 +192,22 @@ function ChatWindow({ isOpen, onClose, userIdentity, initialMessage, onInitialMe
 
       const sanitizedBotReply = botReply.replace(
         /take\s+(the\s+)?ability\s+test/gi,
-        "take the quick test"
+        `take the ${nextTestLabel.toLowerCase()}`
       );
+
+      const normalizedBotReply = nextTestLabel === "Skill Test"
+        ? sanitizedBotReply.replace(/take\s+(the\s+)?quick\s+test/gi, "take the skill test")
+        : sanitizedBotReply;
 
       const actions = Array.isArray(result?.actions)
         ? result.actions.map((action) => {
             const nextAction = { ...action };
             if (
               typeof nextAction.label === "string" &&
-              /take\s+(the\s+)?ability\s+test/i.test(nextAction.label)
+              /take\s+(the\s+)?(ability|quick|skill)\s+test/i.test(nextAction.label)
             ) {
-              nextAction.label = "Take Quick Test";
+              nextAction.label = `Take ${nextTestLabel}`;
+              nextAction.route = "/quick-test";
             }
             return nextAction;
           })
@@ -189,7 +225,7 @@ function ChatWindow({ isOpen, onClose, userIdentity, initialMessage, onInitialMe
         {
           id: Date.now() + 1,
           role: "bot",
-          text: sanitizedBotReply,
+          text: normalizedBotReply,
           actions,
         },
       ]);
@@ -220,7 +256,7 @@ function ChatWindow({ isOpen, onClose, userIdentity, initialMessage, onInitialMe
     lastAutoSentMessageRef.current = initialMessage;
     sendMessage(initialMessage);
     onInitialMessageSent?.();
-  }, [isOpen, initialMessage, isBotTyping, onInitialMessageSent]);
+  }, [isOpen, initialMessage, isBotTyping, onInitialMessageSent, nextTestLabel]);
 
   if (!isOpen) return null;
 
