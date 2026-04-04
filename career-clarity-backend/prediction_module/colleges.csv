@@ -1,0 +1,269 @@
+name,location,courses,fees,rating,type,apply_link,description,tags
+Delhi Public School RK Puram,Delhi,MPC,BiPC,MEC,80000,4.5,junior,https://www.dpsrkp.net,Top CBSE school with strong academics,school,junior,science
+Narayana Junior College,Hyderabad,MPC,BiPC,90000,4.3,junior,https://www.narayanagroup.com,Popular junior college for competitive prep,junior,neet,jee
+Sri Chaitanya Junior College,Hyderabad,MPC,BiPC,95000,4.4,junior,https://srichaitanya.net,Leading institute for IIT and NEET coaching,junior,jee,neet
+FIITJEE,Delhi,JEE Coaching,150000,4.6,coaching,https://www.fiitjee.com,Top coaching institute for IIT JEE preparation,jee,coaching,engineering
+Allen Career Institute,Kota,NEET,JEE,180000,4.7,coaching,https://www.allen.ac.in,Top coaching institute for medical and engineering,neet,jee
+Aakash Institute,Delhi,NEET,JEE,160000,4.5,coaching,https://www.aakash.ac.in,Leading coaching for medical entrance exams,neet,coaching
+IIT Delhi,Delhi,B.Tech CSE,M.Tech,200000,5.0,ug,https://home.iitd.ac.in,Top engineering institute in India,tech,engineering,iit
+IIT Bombay,Mumbai,B.Tech CSE,M.Tech,210000,5.0,ug,https://www.iitb.ac.in,Premier IIT with excellent placements,tech,iit
+IISc Bangalore,Bangalore,MSc,M.Tech,180000,5.0,pg,https://iisc.ac.in,Top research institute in India,research,science
+IIIT Hyderabad,Hyderabad,B.Tech CSE,250000,4.9,ug,https://www.iiit.ac.in,Top private institute for CS,tech,ai
+NIT Trichy,Tamil Nadu,B.Tech,M.Tech,150000,4.8,ug,https://www.nitt.edu,Top NIT with strong academics,engineering,nit
+Delhi Technological University,Delhi,B.Tech CSE,210000,4.7,ug,https://www.dtu.ac.in,Top Delhi engineering college,tech,engineering
+SRM University AP,Andhra Pradesh,B.Tech CSE,300000,4.2,ug,https://srmap.edu.in,Modern university with good infrastructure,tech,private
+VIT Vellore,Tamil Nadu,B.Tech CSE,350000,4.6,ug,https://vit.ac.in,Top private engineering college,tech,placements
+BITS Pilani,Rajasthan,B.E CSE,500000,4.9,ug,https://www.bits-pilani.ac.in,Premium private engineering institute,engineering,private
+IIM Ahmedabad,Ahmedabad,MBA,2500000,5.0,pg,https://www.iima.ac.in,Top business school in India,mba,management
+IIM Bangalore,Bangalore,MBA,2400000,5.0,pg,https://www.iimb.ac.in,Premier MBA institute,management
+ISB Hyderabad,Hyderabad,MBA,3500000,4.9,pg,https://www.isb.edu,Top global business school,mba,executive
+JNU,Delhi,MA,MSc,50000,4.6,pg,https://www.jnu.ac.in,Top university for humanities,research
+University of Delhi,Delhi,BSc,BCom,60000,4.5,ug,https://www.du.ac.in,Top central university,arts,commerce
+Sri Chaitanya Junior College,Hyderabad,MPC BiPC MEC,95000,4.4,junior,https://srichaitanya.net,Top junior college for IIT NEET prep,junior,jee,neet
+Narayana Junior College,Hyderabad,MPC BiPC,90000,4.3,junior,https://www.narayanagroup.com,Popular for competitive exams,junior,jee,neet
+FIITJEE,Delhi,JEE Coaching,150000,4.6,coaching,https://www.fiitjee.com,Top IIT JEE coaching institute,jee,coaching
+Allen Career Institute,Kota,JEE NEET,180000,4.7,coaching,https://www.allen.ac.in,Best coaching for engineering and medical,jee,neet
+Aakash Institute,Delhi,NEET JEE,160000,4.5,coaching,https://www.aakash.ac.in,Leading medical entrance coaching,neet
+Resonance,Kota,JEE NEET,150000,4.5,coaching,https://www.resonance.ac.in,Strong coaching for IIT aspirants,jee
+IIT Delhi,Delhi,B.Tech M.Tech,200000,5.0,ug,https://home.iitd.ac.in,Top IIT institute,tech,engineering
+IIT Bombay,Mumbai,B.Tech M.Tech,210000,5.0,ug,https://www.iitb.ac.in,Premier IIT with placements,tech
+IIT Madras,Chennai,B.Tech M.Tech,200000,5.0,ug,https://www.iitm.ac.in,Top IIT with research focus,engineering
+IIT Kanpur,Kanpur,B.Tech M.Tech,200000,4.9,ug,https://www.iitk.ac.in,Strong engineering institute,iit
+IIT Kharagpur,Kharagpur,B.Tech M.Tech,200000,4.9,ug,https://www.iitkgp.ac.in,Oldest IIT,engineering
+IISc Bangalore,Bangalore,MSc M.Tech,180000,5.0,pg,https://iisc.ac.in,Top research institute,research
+IIIT Hyderabad,Hyderabad,B.Tech CS,250000,4.9,ug,https://www.iiit.ac.in,Top CS institute,ai,tech
+IIIT Bangalore,Bangalore,M.Tech MSc,300000,4.8,pg,https://www.iiitb.ac.in,Advanced IT programs,ai
+NIT Trichy,Tamil Nadu,B.Tech M.Tech,150000,4.8,ug,https://www.nitt.edu,Top NIT,engineering
+NIT Warangal,Telangana,B.Tech,150000,4.7,ug,https://www.nitw.ac.in,Top engineering college,nit
+NIT Surathkal,Karnataka,B.Tech,150000,4.7,ug,https://www.nitk.ac.in,Top coastal NIT,engineering
+Delhi Technological University,Delhi,B.Tech,210000,4.7,ug,https://www.dtu.ac.in,Top Delhi engineering college,tech
+NSUT Delhi,Delhi,B.Tech,210000,4.6,ug,https://www.nsut.ac.in,Top state engineering college,engineering
+Jadavpur University,Kolkata,B.Tech,10000,4.8,ug,https://www.jaduniv.edu.in,Low fee top engineering college,engineering
+BITS Pilani,Rajasthan,B.E,500000,4.9,ug,https://www.bits-pilani.ac.in,Premium private college,engineering
+VIT Vellore,Tamil Nadu,B.Tech,350000,4.6,ug,https://vit.ac.in,Top private university,tech
+SRM University,Chennai,B.Tech,300000,4.3,ug,https://www.srmist.edu.in,Modern private university,tech
+Manipal Institute of Technology,Manipal,B.Tech,400000,4.6,ug,https://manipal.edu,Top private institute,engineering
+Amrita Vishwa Vidyapeetham,Coimbatore,B.Tech,300000,4.5,ug,https://www.amrita.edu,Good private engineering college,engineering
+PSG Tech,Coimbatore,B.Tech,120000,4.6,ug,https://www.psgtech.edu,Top Tamil Nadu college,engineering
+College of Engineering Pune,Pune,B.Tech,90000,4.6,ug,https://www.coep.org.in,Historic engineering college,engineering
+Anna University,Chennai,B.Tech,50000,4.5,ug,https://www.annauniv.edu,Top state university,engineering
+University of Delhi,Delhi,BSc BCom,60000,4.5,ug,https://www.du.ac.in,Top central university,arts,commerce
+Jawaharlal Nehru University,Delhi,MA MSc,50000,4.6,pg,https://www.jnu.ac.in,Top humanities university,research
+Banaras Hindu University,Varanasi,BSc BA,70000,4.6,ug,https://www.bhu.ac.in,Prestigious university,science
+Aligarh Muslim University,Aligarh,BSc BA,60000,4.5,ug,https://www.amu.ac.in,Historic central university,arts
+Jamia Millia Islamia,Delhi,BSc BA,60000,4.5,ug,https://www.jmi.ac.in,Top central university,arts
+IIM Ahmedabad,Ahmedabad,MBA,2500000,5.0,pg,https://www.iima.ac.in,Top business school,mba
+IIM Bangalore,Bangalore,MBA,2400000,5.0,pg,https://www.iimb.ac.in,Premier MBA institute,management
+IIM Calcutta,Kolkata,MBA,2400000,5.0,pg,https://www.iimcal.ac.in,Top MBA college,management
+IIM Lucknow,Lucknow,MBA,2000000,4.8,pg,https://www.iiml.ac.in,Top MBA program,mba
+ISB Hyderabad,Hyderabad,MBA,3500000,4.9,pg,https://www.isb.edu,Global MBA school,mba
+XLRI Jamshedpur,Jamshedpur,MBA,2300000,4.8,pg,https://www.xlri.ac.in,Top HR MBA college,management
+SP Jain Institute,Mumbai,MBA,2000000,4.7,pg,https://www.spjimr.org,Top private MBA college,mba
+NMIMS Mumbai,Mumbai,MBA,2000000,4.6,pg,https://nmims.edu,Popular MBA college,management
+TISS Mumbai,Mumbai,MA,100000,4.7,pg,https://www.tiss.edu,Top social sciences institute,arts
+Symbiosis Pune,Pune,MBA,1800000,4.6,pg,https://www.siu.edu.in,Top MBA institute,management
+Christ University,Bangalore,BBA BCom,150000,4.5,ug,https://christuniversity.in,Top commerce college,commerce
+St Xavier’s College,Mumbai,BSc BCom,100000,4.6,ug,https://xaviers.edu,Top arts college,arts
+Loyola College,Chennai,BSc BA,80000,4.6,ug,https://www.loyolacollege.edu,Top arts college,arts
+Presidency College,Chennai,BSc BA,50000,4.5,ug,https://www.presidencycollegechennai.ac.in,Historic college,arts
+Fergusson College,Pune,BSc BA,60000,4.5,ug,https://www.fergusson.edu,Top Pune college,arts
+Madras Christian College,Chennai,BSc BA,70000,4.5,ug,https://www.mcc.edu.in,Top arts college,arts
+Hansraj College,Delhi,BSc BCom,60000,4.6,ug,https://www.hansrajcollege.ac.in,Top DU college,commerce
+SRCC Delhi,Delhi,BCom,80000,4.8,ug,https://www.srcc.edu,Top commerce college,commerce
+Lady Shri Ram College,Delhi,BA,70000,4.7,ug,https://lsr.edu.in,Top arts college,arts
+Miranda House,Delhi,BA BSc,70000,4.8,ug,https://mirandahouse.ac.in,Top women's college,arts
+Sri Chaitanya Junior College,Hyderabad,MPC BiPC MEC,95000,4.4,junior,https://srichaitanya.net,Top junior college for IIT NEET prep,junior,jee,neet
+Narayana Junior College,Hyderabad,MPC BiPC,90000,4.3,junior,https://www.narayanagroup.com,Popular for competitive exams,junior,jee,neet
+FIITJEE,Delhi,JEE Coaching,150000,4.6,coaching,https://www.fiitjee.com,Top IIT JEE coaching institute,jee,coaching
+Allen Career Institute,Kota,JEE NEET,180000,4.7,coaching,https://www.allen.ac.in,Best coaching for engineering and medical,jee,neet
+Aakash Institute,Delhi,NEET JEE,160000,4.5,coaching,https://www.aakash.ac.in,Leading medical entrance coaching,neet
+Resonance,Kota,JEE NEET,150000,4.5,coaching,https://www.resonance.ac.in,Strong coaching for IIT aspirants,jee
+IIT Delhi,Delhi,B.Tech M.Tech,200000,5.0,ug,https://home.iitd.ac.in,Top IIT institute,tech,engineering
+IIT Bombay,Mumbai,B.Tech M.Tech,210000,5.0,ug,https://www.iitb.ac.in,Premier IIT with placements,tech
+IIT Madras,Chennai,B.Tech M.Tech,200000,5.0,ug,https://www.iitm.ac.in,Top IIT with research focus,engineering
+IIT Kanpur,Kanpur,B.Tech M.Tech,200000,4.9,ug,https://www.iitk.ac.in,Strong engineering institute,iit
+IIT Kharagpur,Kharagpur,B.Tech M.Tech,200000,4.9,ug,https://www.iitkgp.ac.in,Oldest IIT,engineering
+IISc Bangalore,Bangalore,MSc M.Tech,180000,5.0,pg,https://iisc.ac.in,Top research institute,research
+IIIT Hyderabad,Hyderabad,B.Tech CS,250000,4.9,ug,https://www.iiit.ac.in,Top CS institute,ai,tech
+IIIT Bangalore,Bangalore,M.Tech MSc,300000,4.8,pg,https://www.iiitb.ac.in,Advanced IT programs,ai
+NIT Trichy,Tamil Nadu,B.Tech M.Tech,150000,4.8,ug,https://www.nitt.edu,Top NIT,engineering
+NIT Warangal,Telangana,B.Tech,150000,4.7,ug,https://www.nitw.ac.in,Top engineering college,nit
+NIT Surathkal,Karnataka,B.Tech,150000,4.7,ug,https://www.nitk.ac.in,Top coastal NIT,engineering
+Delhi Technological University,Delhi,B.Tech,210000,4.7,ug,https://www.dtu.ac.in,Top Delhi engineering college,tech
+NSUT Delhi,Delhi,B.Tech,210000,4.6,ug,https://www.nsut.ac.in,Top state engineering college,engineering
+Jadavpur University,Kolkata,B.Tech,10000,4.8,ug,https://www.jaduniv.edu.in,Low fee top engineering college,engineering
+BITS Pilani,Rajasthan,B.E,500000,4.9,ug,https://www.bits-pilani.ac.in,Premium private college,engineering
+VIT Vellore,Tamil Nadu,B.Tech,350000,4.6,ug,https://vit.ac.in,Top private university,tech
+SRM University,Chennai,B.Tech,300000,4.3,ug,https://www.srmist.edu.in,Modern private university,tech
+Manipal Institute of Technology,Manipal,B.Tech,400000,4.6,ug,https://manipal.edu,Top private institute,engineering
+Amrita Vishwa Vidyapeetham,Coimbatore,B.Tech,300000,4.5,ug,https://www.amrita.edu,Good private engineering college,engineering
+PSG Tech,Coimbatore,B.Tech,120000,4.6,ug,https://www.psgtech.edu,Top Tamil Nadu college,engineering
+College of Engineering Pune,Pune,B.Tech,90000,4.6,ug,https://www.coep.org.in,Historic engineering college,engineering
+Anna University,Chennai,B.Tech,50000,4.5,ug,https://www.annauniv.edu,Top state university,engineering
+University of Delhi,Delhi,BSc BCom,60000,4.5,ug,https://www.du.ac.in,Top central university,arts,commerce
+Jawaharlal Nehru University,Delhi,MA MSc,50000,4.6,pg,https://www.jnu.ac.in,Top humanities university,research
+Banaras Hindu University,Varanasi,BSc BA,70000,4.6,ug,https://www.bhu.ac.in,Prestigious university,science
+Aligarh Muslim University,Aligarh,BSc BA,60000,4.5,ug,https://www.amu.ac.in,Historic central university,arts
+Jamia Millia Islamia,Delhi,BSc BA,60000,4.5,ug,https://www.jmi.ac.in,Top central university,arts
+IIM Ahmedabad,Ahmedabad,MBA,2500000,5.0,pg,https://www.iima.ac.in,Top business school,mba
+IIM Bangalore,Bangalore,MBA,2400000,5.0,pg,https://www.iimb.ac.in,Premier MBA institute,management
+IIM Calcutta,Kolkata,MBA,2400000,5.0,pg,https://www.iimcal.ac.in,Top MBA college,management
+IIM Lucknow,Lucknow,MBA,2000000,4.8,pg,https://www.iiml.ac.in,Top MBA program,mba
+ISB Hyderabad,Hyderabad,MBA,3500000,4.9,pg,https://www.isb.edu,Global MBA school,mba
+XLRI Jamshedpur,Jamshedpur,MBA,2300000,4.8,pg,https://www.xlri.ac.in,Top HR MBA college,management
+SP Jain Institute,Mumbai,MBA,2000000,4.7,pg,https://www.spjimr.org,Top private MBA college,mba
+NMIMS Mumbai,Mumbai,MBA,2000000,4.6,pg,https://nmims.edu,Popular MBA college,management
+TISS Mumbai,Mumbai,MA,100000,4.7,pg,https://www.tiss.edu,Top social sciences institute,arts
+Symbiosis Pune,Pune,MBA,1800000,4.6,pg,https://www.siu.edu.in,Top MBA institute,management
+Christ University,Bangalore,BBA BCom,150000,4.5,ug,https://christuniversity.in,Top commerce college,commerce
+St Xavier’s College,Mumbai,BSc BCom,100000,4.6,ug,https://xaviers.edu,Top arts college,arts
+Loyola College,Chennai,BSc BA,80000,4.6,ug,https://www.loyolacollege.edu,Top arts college,arts
+Presidency College,Chennai,BSc BA,50000,4.5,ug,https://www.presidencycollegechennai.ac.in,Historic college,arts
+Fergusson College,Pune,BSc BA,60000,4.5,ug,https://www.fergusson.edu,Top Pune college,arts
+Madras Christian College,Chennai,BSc BA,70000,4.5,ug,https://www.mcc.edu.in,Top arts college,arts
+Hansraj College,Delhi,BSc BCom,60000,4.6,ug,https://www.hansrajcollege.ac.in,Top DU college,commerce
+SRCC Delhi,Delhi,BCom,80000,4.8,ug,https://www.srcc.edu,Top commerce college,commerce
+Lady Shri Ram College,Delhi,BA,70000,4.7,ug,https://lsr.edu.in,Top arts college,arts
+Miranda House,Delhi,BA BSc,70000,4.8,ug,https://mirandahouse.ac.in,Top women's college,arts
+Kendriya Vidyalaya Delhi,Delhi,MPC BiPC,50000,4.3,junior,https://kvsangathan.nic.in,Central government school system,school,junior
+Sri Gayatri Junior College,Hyderabad,MPC BiPC,85000,4.2,junior,https://www.srigayatri.com,Popular junior college for IIT prep,junior,jee
+PACE IIT & Medical,Hyderabad,JEE NEET,140000,4.4,coaching,https://www.paceiitmedical.com,Top coaching institute in Hyderabad,jee,neet
+Narayana IIT Academy,Vijayawada,JEE,120000,4.3,coaching,https://www.narayanagroup.com,Strong IIT coaching program,jee
+Chaitanya IIT Academy,Guntur,JEE,110000,4.2,coaching,https://srichaitanya.net,Competitive IIT coaching center,jee
+IIT Patna,Patna,B.Tech M.Tech,200000,4.6,ug,https://www.iitp.ac.in,Emerging IIT with strong academics,engineering
+IIT Mandi,Himachal Pradesh,B.Tech,200000,4.6,ug,https://www.iitmandi.ac.in,Scenic IIT campus,engineering
+IIT Jammu,Jammu,B.Tech,200000,4.5,ug,https://www.iitjammu.ac.in,New IIT institute,engineering
+IIT Dharwad,Karnataka,B.Tech,200000,4.5,ug,https://www.iitdh.ac.in,New IIT campus,engineering
+IIT Palakkad,Kerala,B.Tech,200000,4.5,ug,https://iitpkd.ac.in,New IIT institute,engineering
+NIT Jamshedpur,Jharkhand,B.Tech,150000,4.4,ug,https://www.nitjsr.ac.in,Top engineering college,engineering
+NIT Hamirpur,Himachal Pradesh,B.Tech,150000,4.4,ug,https://nith.ac.in,Top NIT,engineering
+NIT Meghalaya,Shillong,B.Tech,150000,4.3,ug,https://nitm.ac.in,North-east NIT,engineering
+NIT Mizoram,Aizawl,B.Tech,150000,4.2,ug,https://www.nitmz.ac.in,Emerging NIT,engineering
+NIT Nagaland,Dimapur,B.Tech,150000,4.2,ug,https://nitnagaland.ac.in,Developing NIT,engineering
+PES University,Bangalore,B.Tech,350000,4.6,ug,https://pes.edu,Top Bangalore private university,engineering
+RV College of Engineering,Bangalore,B.Tech,300000,4.7,ug,https://www.rvce.edu.in,Top Karnataka engineering college,engineering
+BMS College of Engineering,Bangalore,B.Tech,250000,4.6,ug,https://www.bmsce.ac.in,Top Bangalore engineering college,engineering
+MS Ramaiah Institute of Technology,Bangalore,B.Tech,250000,4.6,ug,https://www.msrit.edu,Top Bangalore college,engineering
+Dayananda Sagar College,Bangalore,B.Tech,220000,4.4,ug,https://www.dsce.edu.in,Top engineering college,engineering
+Thapar Institute of Engineering,Patiala,B.Tech,400000,4.6,ug,https://www.thapar.edu,Top private institute,engineering
+LNMIIT Jaipur,Jaipur,B.Tech,400000,4.6,ug,https://www.lnmiit.ac.in,Top private institute,engineering
+DAIICT Gandhinagar,Gujarat,B.Tech ICT,350000,4.7,ug,https://www.daiict.ac.in,Top ICT institute,tech
+IIEST Shibpur,West Bengal,B.Tech,150000,4.6,ug,https://www.iiests.ac.in,Top engineering institute,engineering
+JSS Science and Technology University,Mysore,B.Tech,200000,4.4,ug,https://jssstuniv.in,Top Karnataka university,engineering
+Rajalakshmi Engineering College,Chennai,B.Tech,180000,4.3,ug,https://www.rajalakshmi.org,Top Chennai engineering college,engineering
+Vel Tech University,Chennai,B.Tech,200000,4.2,ug,https://www.veltech.edu.in,Private engineering university,engineering
+Saveetha Engineering College,Chennai,B.Tech,200000,4.2,ug,https://www.saveetha.ac.in,Private engineering college,engineering
+Kongu Engineering College,Erode,B.Tech,150000,4.4,ug,https://kongu.ac.in,Top Tamil Nadu college,engineering
+Thiagarajar College of Engineering,Madurai,B.Tech,150000,4.5,ug,https://www.tce.edu,Top engineering college,engineering
+Nirma University,Ahmedabad,B.Tech MBA,250000,4.5,ug,https://www.nirmauni.ac.in,Top Gujarat university,engineering
+Pandit Deendayal Energy University,Gandhinagar,B.Tech,250000,4.5,ug,https://www.pdpu.ac.in,Energy focused university,engineering
+Marwadi University,Rajkot,B.Tech,200000,4.2,ug,https://www.marwadiuniversity.ac.in,Private university,engineering
+MIT World Peace University,Pune,B.Tech,250000,4.4,ug,https://mitwpu.edu.in,Top Pune university,engineering
+Sinhgad College of Engineering,Pune,B.Tech,180000,4.3,ug,https://www.sinhgad.edu,Top Pune engineering college,engineering
+Walchand College of Engineering,Sangli,B.Tech,90000,4.5,ug,https://www.walchandsangli.ac.in,Top govt engineering college,engineering
+Fr CRCE Mumbai,Mumbai,B.Tech,200000,4.4,ug,https://frcrce.ac.in,Top Mumbai engineering college,engineering
+DJ Sanghvi College,Mumbai,B.Tech,200000,4.5,ug,https://www.djsce.ac.in,Top Mumbai engineering college,engineering
+NMIMS Engineering,Mumbai,B.Tech,350000,4.4,ug,https://engineering.nmims.edu,Top private college,engineering
+VJTI Mumbai,Mumbai,B.Tech,90000,4.7,ug,https://vjti.ac.in,Top govt engineering college,engineering
+ICT Mumbai,Mumbai,Chemical Engineering,90000,4.7,ug,https://www.ictmumbai.edu.in,Top chemical institute,engineering
+Calcutta University,Kolkata,BSc BA,50000,4.5,ug,https://www.caluniv.ac.in,Historic university,arts
+Presidency University,Kolkata,BSc BA,60000,4.6,ug,https://www.presiuniv.ac.in,Top West Bengal university,arts
+St Stephens College,Delhi,BA BSc,70000,4.8,ug,https://www.ststephens.edu,Top DU college,arts
+Jamia Hamdard,Delhi,BPharm,150000,4.4,ug,https://jamiahamdard.edu,Top pharmacy college,medical
+Manipal College of Pharmaceutical Sciences,Manipal,BPharm,250000,4.6,ug,https://manipal.edu,Top pharmacy institute,medical
+National Institute of Pharmaceutical Education and Research,Mohali,MPharm,100000,4.7,pg,https://niper.gov.in,Top pharma institute,medical
+Indian Statistical Institute Kolkata,Kolkata,MStat MSc,10000,4.9,pg,https://www.isical.ac.in,Top statistics institute,math
+Chennai Mathematical Institute,Chennai,MSc,150000,4.8,pg,https://www.cmi.ac.in,Top math institute,math
+Indian Institute of Science Education and Research Pune,Pune,BS MS,150000,4.8,ug,https://www.iiserpune.ac.in,Top science institute,science
+IISER Bhopal,Bhopal,BS MS,150000,4.7,ug,https://www.iiserb.ac.in,Top science institute,science
+IISER Mohali,Mohali,BS MS,150000,4.7,ug,https://www.iisermohali.ac.in,Top science institute,science
+IISER Kolkata,Kolkata,BS MS,150000,4.7,ug,https://www.iiserkol.ac.in,Top science institute,science
+IISER Thiruvananthapuram,Kerala,BS MS,150000,4.7,ug,https://www.iisertvm.ac.in,Top science institute,science
+Delhi Public School Vasant Kunj,Delhi,MPC BiPC,85000,4.5,junior,https://dpsvasantkunj.com,Top CBSE school with strong academics,school,junior
+Narayana e-Techno School,Vijayawada,MPC BiPC,80000,4.3,junior,https://www.narayanagroup.com,Popular school for IIT foundation,junior,jee
+Sri Chaitanya Techno School,Hyderabad,MPC BiPC,82000,4.4,junior,https://srichaitanya.net,Integrated coaching school,junior,jee
+Toppers Academy,Delhi,JEE NEET,130000,4.3,coaching,https://www.toppersacademy.app,Coaching for competitive exams,jee,neet
+Career Launcher,Delhi,CUET CAT,120000,4.4,coaching,https://www.careerlauncher.com,Top coaching institute for entrances,coaching
+TIME Institute,Hyderabad,CAT Banking,100000,4.4,coaching,https://www.time4education.com,Top CAT coaching institute,mba
+IIT Tirupati,Andhra Pradesh,B.Tech,200000,4.6,ug,https://www.iittp.ac.in,Emerging IIT,engineering
+IIT Bhilai,Chhattisgarh,B.Tech,200000,4.5,ug,https://www.iitbhilai.ac.in,New IIT campus,engineering
+IIT Goa,Goa,B.Tech,200000,4.5,ug,https://www.iitgoa.ac.in,New IIT institute,engineering
+IIT Ropar,Punjab,B.Tech,200000,4.6,ug,https://www.iitrpr.ac.in,Top IIT,engineering
+NIT Delhi,Delhi,B.Tech,150000,4.5,ug,https://nitdelhi.ac.in,Top engineering college,engineering
+NIT Puducherry,Puducherry,B.Tech,150000,4.3,ug,https://www.nitpy.ac.in,Emerging NIT,engineering
+NIT Goa,Goa,B.Tech,150000,4.3,ug,https://www.nitgoa.ac.in,New NIT institute,engineering
+NIT Arunachal Pradesh,Arunachal Pradesh,B.Tech,150000,4.2,ug,https://www.nitap.ac.in,Developing NIT,engineering
+NIT Sikkim,Sikkim,B.Tech,150000,4.2,ug,https://nitsikkim.ac.in,Emerging NIT,engineering
+Pune Institute of Computer Technology,Pune,B.Tech CS,180000,4.6,ug,https://pict.edu,Top CS college,tech
+Cummins College of Engineering,Pune,B.Tech,180000,4.5,ug,https://cumminscollege.org,Top women's engineering college,engineering
+Sardar Patel Institute of Technology,Mumbai,B.Tech,180000,4.6,ug,https://www.spit.ac.in,Top Mumbai engineering college,engineering
+KJ Somaiya College of Engineering,Mumbai,B.Tech,200000,4.5,ug,https://kjsce.somaiya.edu,Top engineering college,engineering
+Thadomal Shahani Engineering College,Mumbai,B.Tech,200000,4.4,ug,https://tsec.edu,Top engineering college,engineering
+Heritage Institute of Technology,Kolkata,B.Tech,150000,4.4,ug,https://heritageit.edu,Top WB engineering college,engineering
+Techno India University,Kolkata,B.Tech,180000,4.3,ug,https://technoindiauniversity.ac.in,Private university,engineering
+KIET Group of Institutions,Ghaziabad,B.Tech,180000,4.4,ug,https://www.kiet.edu,Top UP engineering college,engineering
+ABES Engineering College,Ghaziabad,B.Tech,170000,4.3,ug,https://abes.ac.in,Top private engineering college,engineering
+Galgotias College of Engineering,Greater Noida,B.Tech,180000,4.3,ug,https://galgotiacollege.edu,Top engineering college,engineering
+Sharda University,Greater Noida,B.Tech MBA,250000,4.2,ug,https://www.sharda.ac.in,Private university,engineering
+Noida Institute of Engineering,Greater Noida,B.Tech,180000,4.2,ug,https://www.niet.co.in,Top engineering college,engineering
+Indraprastha University,Delhi,B.Tech BBA,150000,4.5,ug,https://ipu.ac.in,Top state university,engineering
+Jamia Hamdard University,Delhi,B.Tech Pharmacy,150000,4.4,ug,https://jamiahamdard.edu,Top private university,medical
+Guru Gobind Singh Indraprastha University,Delhi,B.Tech,150000,4.5,ug,https://ipu.ac.in,Top Delhi university,engineering
+Punjab Engineering College,Chandigarh,B.Tech,120000,4.6,ug,https://pec.ac.in,Top engineering college,engineering
+Chitkara University,Punjab,B.Tech,200000,4.4,ug,https://www.chitkara.edu.in,Private university,engineering
+Lovely Professional University Jalandhar,Punjab,B.Tech MBA,250000,4.3,ug,https://www.lpu.in,Large private university,engineering
+SRM Ramapuram,Chennai,B.Tech,250000,4.2,ug,https://www.srmrmp.edu.in,SRM branch campus,engineering
+Jeppiaar Engineering College,Chennai,B.Tech,180000,4.2,ug,https://jeppiaarcollege.org,Top Chennai college,engineering
+Panimalar Engineering College,Chennai,B.Tech,180000,4.3,ug,https://panimalar.ac.in,Top engineering college,engineering
+RMD Engineering College,Chennai,B.Tech,180000,4.3,ug,https://rmd.ac.in,Private engineering college,engineering
+Karpagam College of Engineering,Coimbatore,B.Tech,180000,4.3,ug,https://kce.ac.in,Top engineering college,engineering
+SNS College of Engineering,Coimbatore,B.Tech,180000,4.2,ug,https://snsce.ac.in,Private engineering college,engineering
+Aditya Engineering College,Surampalem,B.Tech,150000,4.3,ug,https://aec.edu.in,Top AP engineering college,engineering
+Pragati Engineering College,Surampalem,B.Tech,150000,4.2,ug,https://pragati.ac.in,Top engineering college,engineering
+Anil Neerukonda Institute of Technology,Vizag,B.Tech,180000,4.4,ug,https://anits.edu.in,Top Vizag engineering college,engineering
+Gayatri Vidya Parishad College,Vizag,B.Tech,180000,4.4,ug,https://gvpce.ac.in,Top AP college,engineering
+CVR College of Engineering,Hyderabad,B.Tech,180000,4.5,ug,https://cvr.ac.in,Top Telangana engineering college,engineering
+VNR VJIET,Hyderabad,B.Tech,180000,4.6,ug,https://vnrvjiet.ac.in,Top Hyderabad college,engineering
+MGIT Hyderabad,Hyderabad,B.Tech,180000,4.5,ug,https://mgit.ac.in,Top engineering college,engineering
+CBIT Hyderabad,Hyderabad,B.Tech,180000,4.6,ug,https://cbit.ac.in,Top engineering college,engineering
+GRIET Hyderabad,Hyderabad,B.Tech,180000,4.5,ug,https://griet.ac.in,Top engineering college,engineering
+Osmania University,Hyderabad,BSc BA,60000,4.5,ug,https://www.osmania.ac.in,Top state university,arts
+Kakatiya University,Warangal,BSc BA,60000,4.4,ug,https://www.kakatiya.ac.in,Top Telangana university,arts
+Acharya Nagarjuna University,Guntur,BSc BA,60000,4.4,ug,https://www.nagarjunauniversity.ac.in,Top AP university,arts
+Sri Venkateswara University,Tirupati,BSc BA,60000,4.5,ug,https://www.svuniversity.edu.in,Top AP university,arts
+Dr BR Ambedkar University,Delhi,BA BCom,60000,4.3,ug,https://aud.ac.in,Top Delhi university,arts
+Kendriya Vidyalaya Hyderabad,Hyderabad,MPC BiPC,50000,4.3,junior,https://kvsangathan.nic.in,Central school with strong academics,school,junior
+DAV Public School Chandigarh,Chandigarh,MPC BiPC,70000,4.4,junior,https://davchd.com,Top CBSE school,junior,school
+Motion Education Kota,Kota,JEE NEET,140000,4.5,coaching,https://motion.ac.in,Popular coaching institute in Kota,jee,neet
+Unacademy Learning Center,Bangalore,JEE NEET CAT,120000,4.4,coaching,https://unacademy.com,Modern coaching platform,coaching
+Physics Wallah Institute,Noida,JEE NEET,80000,4.6,coaching,https://www.pw.live,Affordable coaching platform,jee,neet
+IIT Varanasi (BHU),Varanasi,B.Tech M.Tech,200000,4.8,ug,https://www.iitbhu.ac.in,Top IIT institute,engineering
+Indian Maritime University,Chennai,B.Tech Marine,200000,4.4,ug,https://www.imu.edu.in,Specialized maritime university,engineering
+National Institute of Design,Ahmedabad,Design,300000,4.8,ug,https://www.nid.edu,Top design institute,design
+National Institute of Fashion Technology,Delhi,Design,300000,4.7,ug,https://www.nift.ac.in,Top fashion institute,design
+Film and Television Institute of India,Pune,Film Studies,200000,4.7,pg,https://www.ftii.ac.in,Top film institute,arts
+Satyajit Ray Film Institute,Kolkata,Film Studies,200000,4.6,pg,https://srfti.ac.in,Top film institute,arts
+Indian Institute of Foreign Trade,Delhi,MBA,2000000,4.8,pg,https://www.iift.edu,Top MBA institute,management
+Delhi School of Economics,Delhi,MA Economics,100000,4.8,pg,https://www.dse.ac.in,Top economics institute,arts
+Tata Institute of Fundamental Research,Mumbai,Research,10000,5.0,pg,https://www.tifr.res.in,Top research institute,research
+Indian Institute of Astrophysics,Bangalore,Research,10000,4.9,pg,https://www.iiap.res.in,Top space research institute,science
+Indian Institute of Space Science and Technology,Thiruvananthapuram,B.Tech Aerospace,200000,4.8,ug,https://www.iist.ac.in,ISRO-linked institute,space
+National Institute of Technology Patna,Patna,B.Tech,150000,4.5,ug,https://www.nitp.ac.in,Top engineering college,engineering
+Government College of Engineering Aurangabad,Aurangabad,B.Tech,90000,4.4,ug,https://geca.ac.in,Top govt engineering college,engineering
+Andhra University,Vizag,BSc BA,60000,4.5,ug,https://www.andhrauniversity.edu.in,Top AP university,arts
+Bangalore University,Bangalore,BSc BA,60000,4.4,ug,https://bangaloreuniversity.ac.in,Top Karnataka university,arts
+Calicut University,Kerala,BSc BA,50000,4.4,ug,https://uoc.ac.in,Top Kerala university,arts
+University of Madras,Chennai,BSc BA,50000,4.5,ug,https://www.unom.ac.in,Historic university,arts
+Savitribai Phule Pune University,Pune,BSc BA,60000,4.6,ug,https://www.unipune.ac.in,Top Pune university,arts
+Dr APJ Abdul Kalam Technical University,Lucknow,B.Tech,120000,4.4,ug,https://aktu.ac.in,Top UP technical university,engineering
+Rajasthan Technical University,Kota,B.Tech,120000,4.3,ug,https://rtu.ac.in,Top Rajasthan university,engineering
+West Bengal University of Technology,Kolkata,B.Tech,120000,4.3,ug,https://makautwb.ac.in,Top WB technical university,engineering
+Himachal Pradesh University,Shimla,BSc BA,50000,4.3,ug,https://hpuniv.ac.in,Top HP university,arts
+University of Jammu,Jammu,BSc BA,50000,4.3,ug,https://www.jammuuniversity.ac.in,Top Jammu university,arts
+Pondicherry University,Puducherry,BSc BA,50000,4.4,ug,https://www.pondiuni.edu.in,Central university,arts
+Tezpur University,Assam,BSc BA,50000,4.5,ug,https://www.tezu.ernet.in,Top NE university,arts
+North Eastern Hill University,Shillong,BSc BA,50000,4.3,ug,https://www.nehu.ac.in,Top NE university,arts
+Tripura University,Tripura,BSc BA,50000,4.2,ug,https://tripurauniv.ac.in,State university,arts
+Guru Nanak Dev University,Amritsar,BSc BA,60000,4.5,ug,https://online.gndu.ac.in,Top Punjab university,arts
+Kurukshetra University,Haryana,BSc BA,60000,4.4,ug,https://www.kuk.ac.in,Top Haryana university,arts
+Maharshi Dayanand University,Rohtak,BSc BA,60000,4.4,ug,https://mdu.ac.in,Top Haryana university,arts

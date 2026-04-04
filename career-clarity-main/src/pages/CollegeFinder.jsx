@@ -1,24 +1,35 @@
 import { useEffect, useState } from "react";
 import Loader from "../components/Loader";
 import CollegeCard from "../components/CollegeCard";
-import { searchColleges } from "../services/collegeService";
+import CollegeDetailsModal from "../components/CollegeDetailsModal";
+import { getCollegeDetails, searchColleges } from "../services/collegeService";
 
 function CollegeFinder() {
 	const [filters, setFilters] = useState({ search: "", location: "", course: "", fees: "" });
 	const [colleges, setColleges] = useState([]);
+	const [recommendedColleges, setRecommendedColleges] = useState([]);
+	const [pagination, setPagination] = useState({ page: 1, page_size: 15, total_count: 0, total_pages: 1, has_next: false, has_previous: false });
 	const [isLoading, setIsLoading] = useState(true);
 	const [errorMessage, setErrorMessage] = useState("");
+	const [selectedCollege, setSelectedCollege] = useState(null);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [detailsError, setDetailsError] = useState("");
 
-	const loadColleges = async (activeFilters) => {
+	const loadColleges = async (activeFilters, requestedPage = 1) => {
 		setIsLoading(true);
 		setErrorMessage("");
 
 		try {
-			const data = await searchColleges(activeFilters);
-			const result = (data.colleges || []).filter((college) =>
-				activeFilters.fees ? college.fees.toLowerCase().includes(activeFilters.fees.toLowerCase()) : true
-			);
-			setColleges(result);
+			const data = await searchColleges({ ...activeFilters, page: requestedPage, page_size: 15 });
+			setColleges(Array.isArray(data.colleges) ? data.colleges : []);
+			setRecommendedColleges(Array.isArray(data.recommended) ? data.recommended : []);
+			setPagination(data.pagination || { page: requestedPage, page_size: 15, total_count: 0, total_pages: 1, has_next: false, has_previous: false });
+
+			const recommendedCourses = Array.isArray(data.recommended_courses) ? data.recommended_courses.filter(Boolean) : [];
+			if (!activeFilters.course && recommendedCourses.length === 1) {
+				setFilters((prev) => ({ ...prev, course: recommendedCourses[0] }));
+			}
 		} catch {
 			setErrorMessage("Unable to fetch colleges currently.");
 		} finally {
@@ -27,7 +38,7 @@ function CollegeFinder() {
 	};
 
 	useEffect(() => {
-		loadColleges(filters);
+		loadColleges(filters, 1);
 	}, []);
 
 	const onChange = (event) => {
@@ -37,7 +48,31 @@ function CollegeFinder() {
 
 	const onSubmit = (event) => {
 		event.preventDefault();
-		loadColleges(filters);
+		loadColleges(filters, 1);
+	};
+
+	const goToPage = (nextPage) => {
+		loadColleges(filters, nextPage);
+	};
+
+	const handleCloseModal = () => {
+		setIsModalOpen(false);
+	};
+
+	const handleViewDetails = async (college) => {
+		setIsModalOpen(true);
+		setLoading(true);
+		setDetailsError("");
+
+		try {
+			const details = await getCollegeDetails(college?.name || "");
+			setSelectedCollege(details);
+		} catch {
+			setSelectedCollege(null);
+			setDetailsError("Unable to load college details");
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	return (
@@ -124,8 +159,36 @@ function CollegeFinder() {
 				</div>
 			) : colleges.length > 0 ? (
 				<div>
+					{recommendedColleges.length > 0 && (
+						<div className="cc-fade-in mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm" style={{ animationDelay: "140ms" }}>
+							<div className="flex items-center justify-between gap-4">
+								<div>
+									<p className="text-sm font-semibold uppercase tracking-widest text-emerald-700">AI Highlighted Colleges</p>
+									<p className="text-sm text-emerald-900">Top matches from the database with relevance scores</p>
+								</div>
+								<p className="text-sm font-semibold text-emerald-700">Top {recommendedColleges.length}</p>
+							</div>
+							<div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+								{recommendedColleges.map((college) => (
+									<div key={`${college.name}-recommended`} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-emerald-100">
+										<div className="flex items-start justify-between gap-3">
+											<div>
+												<h3 className="font-bold text-slate-900">{college.name}</h3>
+												<p className="text-sm text-slate-600">{college.location}</p>
+											</div>
+											<span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+												{college.relevance_score ?? 0}/100
+											</span>
+										</div>
+										<p className="mt-2 text-sm text-slate-700">{college.reason}</p>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+
 					<h2 className="cc-fade-in mb-6 text-2xl font-extrabold text-slate-900" style={{ animationDelay: "150ms" }}>
-						📚 {colleges.length} colleges found
+						📚 {pagination.total_count || colleges.length} colleges found
 					</h2>
 					<div className="grid gap-6 lg:grid-cols-3">
 						{colleges.map((college, index) => (
@@ -134,10 +197,34 @@ function CollegeFinder() {
 								className="cc-fade-in rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-md transition hover:-translate-y-2 hover:shadow-lg"
 								style={{ animationDelay: `${200 + index * 75}ms` }}
 							>
-								<CollegeCard college={college} />
+								<CollegeCard college={college} onViewDetails={handleViewDetails} />
 							</div>
 						))}
 					</div>
+
+						<div className="cc-fade-in mt-8 flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" style={{ animationDelay: "300ms" }}>
+							<p className="text-sm text-slate-600">
+								Showing page <span className="font-semibold text-slate-900">{pagination.page}</span> of <span className="font-semibold text-slate-900">{pagination.total_pages}</span> • {pagination.page_size} per page
+							</p>
+							<div className="flex items-center gap-3">
+								<button
+									type="button"
+									disabled={!pagination.has_previous || isLoading}
+									onClick={() => goToPage(Math.max(1, pagination.page - 1))}
+									className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-100"
+								>
+									← Previous
+								</button>
+								<button
+									type="button"
+									disabled={!pagination.has_next || isLoading}
+									onClick={() => goToPage(pagination.page + 1)}
+									className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 hover:from-indigo-700 hover:to-purple-700"
+								>
+									Next →
+								</button>
+							</div>
+						</div>
 				</div>
 			) : (
 				<div className="cc-fade-in rounded-2xl border-2 border-amber-200 bg-amber-50 p-8 text-center" style={{ animationDelay: "200ms" }}>
@@ -146,6 +233,14 @@ function CollegeFinder() {
 					<p className="mt-2 text-sm text-amber-800">Try adjusting your filters or search terms</p>
 				</div>
 			)}
+
+			<CollegeDetailsModal
+				isOpen={isModalOpen}
+				loading={loading}
+				error={detailsError}
+				college={selectedCollege}
+				onClose={handleCloseModal}
+			/>
 		</div>
 	);
 }

@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from .models import CVProfile
 from .utils import extract_text_from_pdf, extract_text_from_image, parse_cv
 from accounts.models import Profile
-from test_module.models import TestResult
+from test_module.models import TestResult, SkillTestResult
 from .chat_utils import extract_subjects, is_school_student, has_no_cv_intent, extract_high_marks_subjects
 from .chatbot_utils import is_relevant_question, build_prompt, call_ai, format_short_reply
 
@@ -252,9 +252,9 @@ def chatbot_api(request):
         },
     )
 
-    def _response(reply, actions=None):
+    def _response(reply, actions=None, include_profile_reminder=True):
         final_reply = str(reply or "").strip()
-        if not profile_updated:
+        if include_profile_reminder and not profile_updated:
             reminder = "Please update your profile details when possible for better guidance."
             if reminder.lower() not in final_reply.lower():
                 final_reply = f"{final_reply}\n{reminder}" if final_reply else reminder
@@ -275,6 +275,7 @@ def chatbot_api(request):
     profile_has_skills = bool(isinstance(profile.skills, list) and len(profile.skills) > 0)
     onboarding_completed = bool(profile_updated or has_uploaded_document or profile_has_skills)
     quick_test_attempted = TestResult.objects.filter(user=user).exists()
+    skill_test_attempted = SkillTestResult.objects.filter(user=user).exists()
 
     def _workflow_actions():
         actions = []
@@ -305,6 +306,13 @@ def chatbot_api(request):
 
     # Bootstrap request used when chat opens: show next-step actions immediately.
     if message.lower() in {"__onboarding__", "start", "hi", "hello", "hey"}:
+        if quick_test_attempted and skill_test_attempted:
+            return _response(
+                "How can I help you with your career or education today?",
+                workflow_actions,
+                include_profile_reminder=False,
+            )
+
         if not onboarding_completed:
             return _response(
                 f"Welcome! To get started, upload your {'marks card' if school_student else 'CV'} or update your profile.",

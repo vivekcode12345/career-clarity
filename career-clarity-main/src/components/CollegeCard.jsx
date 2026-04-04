@@ -1,4 +1,8 @@
-function CollegeCard({ college }) {
+function CollegeCard({ college, onViewDetails }) {
+	const courseLabel = Array.isArray(college.courses)
+		? college.courses.join(", ")
+		: college.course || college.courses || "N/A";
+
 	return (
 		<article className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-white to-indigo-50/40 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
 			<h3 className="text-lg font-semibold text-slate-900">{college.name}</h3>
@@ -7,19 +11,26 @@ function CollegeCard({ college }) {
 			<div className="mt-4 space-y-2 text-sm text-slate-700">
 				<p>
 					<span className="font-semibold">Course: </span>
-					{college.course}
+					{courseLabel}
 				</p>
 				<p>
 					<span className="font-semibold">Fees: </span>
-					{college.fees}
+					{typeof college.fees === "number" ? `₹${college.fees.toLocaleString("en-IN")}` : college.fees}
 				</p>
+				{typeof college.rating === "number" && (
+					<p>
+						<span className="font-semibold">Rating: </span>
+						{college.rating.toFixed(1)} / 5
+					</p>
+				)}
 			</div>
 
 			<button
 				type="button"
+				onClick={() => onViewDetails?.(college)}
 				className="cc-cta mt-4 px-4 py-2 text-sm"
 			>
-				Apply (UI Only)
+				View Details →
 			</button>
 		</article>
 	);

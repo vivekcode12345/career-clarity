@@ -1,7 +1,11 @@
 import requests
 import json
+import hashlib
 from django.conf import settings
 import logging
+
+MIN_RECOMMENDATION_COUNT = 3
+MAX_RECOMMENDATION_COUNT = 4
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +21,7 @@ def get_ability_level(score):
 
 def build_recommendations_prompt(ability, interest, skills, skill_name, skill_level, skill_score, skill_history=None):
     """
-    Build a personalized prompt for AI to generate top 3-4 career recommendations.
+    Build a personalized prompt for AI to generate top career recommendations.
     """
     skills_str = ", ".join(skills) if skills else "General skills"
     history_str = "No previous skill tests available."
@@ -31,7 +35,7 @@ def build_recommendations_prompt(ability, interest, skills, skill_name, skill_le
 
     prompt = f"""You are a career advisor helping a user find the best career paths for them.
 
-Based on the following user profile, recommend the TOP 3-4 most suitable careers. Be specific and personalized.
+Based on the following user profile, recommend the TOP 3 to 4 most suitable careers. Be specific and personalized.
 
 **User Profile:**
 - Overall Ability Level: {ability.upper()} (scale: low/medium/high)
@@ -42,7 +46,7 @@ Based on the following user profile, recommend the TOP 3-4 most suitable careers
 {history_str}
 
 **Important Guidelines:**
-1. Generate EXACTLY 3-4 career recommendations (not more, not less)
+1. Generate ONLY 3 or 4 career recommendations
 2. Each career should be highly personalized to THIS user's profile
 3. Do NOT recommend generic careers - focus on paths that match their skills and interests
 4. Include WHY this career is perfect for them based on their skills
@@ -102,7 +106,8 @@ def call_ai_for_recommendations(prompt):
                 try:
                     data = json.loads(content)
                     if "recommendations" in data and isinstance(data["recommendations"], list):
-                        return data["recommendations"][:4]  # Max 4
+                        cleaned = [item for item in data["recommendations"] if isinstance(item, dict)]
+                        return cleaned[:MAX_RECOMMENDATION_COUNT]
                 except json.JSONDecodeError:
                     logger.error(f"Failed to parse AI response: {content}")
                     return []
@@ -115,21 +120,100 @@ def call_ai_for_recommendations(prompt):
         return []
 
 
+def call_ai_json_response(prompt, max_tokens=1200):
+    import os
+
+    api_key = os.getenv("OPENROUTER_API_KEY") or getattr(settings, "OPENROUTER_API_KEY", None)
+    if not api_key:
+        logger.error("OPENROUTER_API_KEY not configured")
+        return None
+
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "mistralai/mixtral-8x7b-instruct",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.4,
+                "max_tokens": max_tokens,
+            },
+            timeout=30,
+        )
+
+        if response.status_code != 200:
+            logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+            return None
+
+        result = response.json()
+        if "choices" not in result or not result["choices"]:
+            return None
+
+        content = result["choices"][0]["message"]["content"]
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            start = content.find("{")
+            end = content.rfind("}") + 1
+            if start != -1 and end > start:
+                try:
+                    return json.loads(content[start:end])
+                except Exception:
+                    pass
+            return None
+    except Exception as exc:
+        logger.error(f"AI JSON response error: {exc}")
+        return None
+
+
 def generate_ai_recommendations(ability, interest, skills, skill_name, skill_level, skill_score, skill_history=None):
     """
     Generate personalized career recommendations using AI.
-    Returns list of 3-4 recommendations or fallback careers.
+    Returns list of personalized recommendations or fallback careers.
     """
     prompt = build_recommendations_prompt(ability, interest, skills, skill_name, skill_level, skill_score, skill_history=skill_history)
     recommendations = call_ai_for_recommendations(prompt)
 
-    if recommendations:
+    if recommendations and MIN_RECOMMENDATION_COUNT <= len(recommendations) <= MAX_RECOMMENDATION_COUNT:
         return recommendations
 
-    # Fallback to predefined careers if AI fails
-    logger.warning("AI recommendation failed, using fallback careers")
-    fallback = CAREER_OPTIONS.get(interest, CAREER_OPTIONS["tech"])
-    return fallback[:3]
+    # Fallback to rule-based ranking + broader pool if AI fails/returns too few
+    logger.warning("AI recommendation insufficient, using fallback careers")
+
+    fallback_ranked = get_recommendations(
+        interest=interest,
+        skills=skills,
+        ability=ability,
+        skill_level=skill_level,
+        skill_name=skill_name,
+        skill_score=skill_score,
+        skill_total=10,
+    )
+
+    merged = []
+    seen_titles = set()
+
+    for item in fallback_ranked:
+        title = str(item.get("title", "")).strip().lower()
+        if title and title not in seen_titles:
+            merged.append(item)
+            seen_titles.add(title)
+        if len(merged) >= MAX_RECOMMENDATION_COUNT:
+            return merged
+
+    for category_items in CAREER_OPTIONS.values():
+        for item in category_items:
+            title = str(item.get("title", "")).strip().lower()
+            if title and title not in seen_titles:
+                merged.append(item)
+                seen_titles.add(title)
+            if len(merged) >= MAX_RECOMMENDATION_COUNT:
+                return merged
+
+    return merged[:MAX_RECOMMENDATION_COUNT]
 
 
 CAREER_OPTIONS = {
@@ -364,3 +448,331 @@ def get_recommendations(interest, skills, ability, skill_level=None, skill_name=
     )
 
     return ranked
+
+
+LEVEL_TYPE_MAP = {
+    "10": "junior",
+    "12": "ug",
+    "ug": "pg",
+    "pg": "pg",
+}
+
+
+LEVEL_DEFAULT_COURSES = {
+    "10": ["MPC", "BiPC", "MEC", "CEC"],
+    "12": ["B.Tech", "BSc", "BCA", "BBA"],
+    "ug": ["M.Tech", "MBA", "MSc"],
+    "pg": ["PhD", "Research", "Specialization"],
+}
+
+
+INTEREST_COURSE_MAP = {
+    "tech": ["B.Tech", "BSc Computer Science", "BCA", "M.Tech", "MSc Computer Science"],
+    "business": ["BBA", "BCom", "MBA"],
+    "science": ["BSc", "BiPC", "MSc"],
+    "math": ["MPC", "BSc Math", "MSc Math"],
+}
+
+
+def normalize_user_level(raw_level):
+    value = str(raw_level or "").strip().lower()
+    if value in {"10", "class 10", "x", "ssc"}:
+        return "10"
+    if value in {"12", "class 12", "xii", "inter", "intermediate"}:
+        return "12"
+    if value in {"ug", "undergraduate", "bachelor", "bachelors"}:
+        return "ug"
+    if value in {"pg", "postgraduate", "masters", "master"}:
+        return "pg"
+    return "12"
+
+
+def map_interest_to_courses(interest):
+    interest_key = _normalize_interest(interest)
+    return INTEREST_COURSE_MAP.get(interest_key, [])
+
+
+def get_recommended_courses(user_level, interest, course_override=None):
+    level_key = normalize_user_level(user_level)
+    recommended = list(LEVEL_DEFAULT_COURSES.get(level_key, []))
+
+    for item in map_interest_to_courses(interest):
+        if item not in recommended:
+            recommended.append(item)
+
+    if course_override:
+        override = str(course_override).strip()
+        if override and override not in recommended:
+            recommended.insert(0, override)
+
+    return recommended
+
+
+def parse_college_courses(courses):
+    if isinstance(courses, list):
+        return [str(item).strip() for item in courses if str(item).strip()]
+    if isinstance(courses, str):
+        return [item.strip() for item in courses.split(",") if item.strip()]
+    return []
+
+
+def _has_text_match(target, candidates):
+    target_norm = _normalize_text(target)
+    if not target_norm:
+        return False
+    for candidate in candidates:
+        candidate_norm = _normalize_text(candidate)
+        if target_norm in candidate_norm or candidate_norm in target_norm:
+            return True
+    return False
+
+
+def rank_colleges(colleges, user_profile):
+    ranked = []
+
+    recommended_courses = user_profile.get("recommended_courses", [])
+    interest = user_profile.get("interest", "")
+    skills = user_profile.get("skills", []) or []
+    ability = str(user_profile.get("ability", "medium")).strip().lower()
+    preferred_location = user_profile.get("location")
+    max_fee = user_profile.get("max_fee")
+    course_override = user_profile.get("course_override")
+
+    for college in colleges:
+        courses = parse_college_courses(getattr(college, "courses", []))
+        score = 0.0
+
+        # Interest / course alignment
+        interest_match = any(_has_text_match(course, courses) for course in recommended_courses)
+        if interest_match:
+            score += 3
+
+        # Skill alignment
+        if skills:
+            if any(_has_text_match(skill, courses + [college.name]) for skill in skills):
+                score += 3
+
+        # Ability alignment
+        college_rating = getattr(college, "rating", None)
+        college_fees = getattr(college, "fees", 0) or 0
+        if ability == "high":
+            if college_rating is not None and college_rating >= 4.0:
+                score += 2
+        elif ability == "medium":
+            if college_rating is not None and college_rating >= 3.0:
+                score += 2
+        else:
+            if college_fees and college_fees <= 250000:
+                score += 2
+
+        # Rating presence bonus
+        if college_rating is not None:
+            score += 1
+
+        # Soft preferences from query params (do not remove colleges)
+        if preferred_location:
+            if _has_text_match(preferred_location, [college.location]):
+                score += 1.5
+            else:
+                score -= 0.5
+
+        if max_fee is not None:
+            if college_fees and college_fees <= max_fee:
+                score += 1.5
+            else:
+                score -= 1
+
+        if course_override:
+            if _has_text_match(course_override, courses):
+                score += 1
+            else:
+                score -= 0.5
+
+        ranked.append(
+            {
+                "id": college.id,
+                "name": college.name,
+                "location": college.location,
+                "courses": courses,
+                "fees": college_fees,
+                "rating": college_rating,
+                "type": college.type,
+                "apply_link": college.apply_link,
+                "score": round(score, 2),
+            }
+        )
+
+    ranked.sort(key=lambda item: (item["score"], item.get("rating") or 0), reverse=True)
+    return ranked
+
+
+def build_college_highlight_prompt(user_profile, candidate_colleges):
+    colleges_payload = []
+    for college in candidate_colleges[:20]:
+        colleges_payload.append(
+            {
+                "name": college.get("name"),
+                "location": college.get("location"),
+                "courses": college.get("courses", []),
+                "fees": college.get("fees"),
+                "rating": college.get("rating"),
+                "type": college.get("type"),
+            }
+        )
+
+    return f"""You are an expert college advisor.
+
+User context:
+- User level: {user_profile.get('user_level')}
+- Ability: {user_profile.get('ability')}
+- Interest: {user_profile.get('interest')}
+- Skills: {', '.join(user_profile.get('skills') or [])}
+- Recommended courses: {', '.join(user_profile.get('recommended_courses') or [])}
+
+Candidate colleges (use ONLY from this list):
+{json.dumps(colleges_payload, ensure_ascii=False)}
+
+Task:
+Pick the TOP 3 to 5 best colleges for this user and assign a relevance score from 0 to 100.
+Return JSON only in this format:
+{{
+  "recommended": [
+    {{
+      "name": "College Name",
+      "relevance_score": 92,
+      "reason": "Why it matches the user",
+      "location": "City",
+      "course": "Best course",
+      "fees": 123456,
+      "apply_link": "https://..."
+    }}
+  ]
+}}
+
+Return only JSON."""
+
+
+def call_ai_for_college_highlights(prompt):
+    data = call_ai_json_response(prompt, max_tokens=1400)
+    if isinstance(data, dict) and isinstance(data.get("recommended"), list):
+        cleaned = [item for item in data["recommended"] if isinstance(item, dict)]
+        return cleaned[:5]
+    return []
+
+
+def generate_ai_college_highlights(user_profile, candidate_colleges):
+    prompt = build_college_highlight_prompt(user_profile, candidate_colleges)
+    highlighted = call_ai_for_college_highlights(prompt)
+    if highlighted:
+        return highlighted
+
+    fallback = []
+    for college in candidate_colleges[:5]:
+        fallback.append(
+            {
+                "name": college.get("name"),
+                "relevance_score": int(college.get("score", 0) or 0),
+                "reason": "Best match based on your profile and ranking score.",
+                "location": college.get("location"),
+                "course": college.get("courses", [None])[0] if college.get("courses") else "",
+                "fees": college.get("fees"),
+                "apply_link": college.get("apply_link"),
+            }
+        )
+    return fallback
+
+
+def build_college_feedback_prompt(college, user_profile):
+    return f"""You are an AI college advisor.
+
+User profile:
+- User level: {user_profile.get('user_level')}
+- Ability: {user_profile.get('ability')}
+- Interest: {user_profile.get('interest')}
+- Skills: {', '.join(user_profile.get('skills') or [])}
+- Recommended courses: {', '.join(user_profile.get('recommended_courses') or [])}
+
+College:
+- Name: {college.get('name')}
+- Location: {college.get('location')}
+- Courses: {college.get('courses')}
+- Fees: {college.get('fees')}
+- Rating: {college.get('rating')}
+
+Return JSON only in this format:
+{{
+  "should_choose": true,
+  "message": "short personalized explanation",
+  "why_not": "short note if not ideal, otherwise empty string",
+  "match_score": 0-100
+}}
+
+Be specific and concise."""
+
+
+def generate_ai_college_feedback(college, user_profile):
+    prompt = build_college_feedback_prompt(college, user_profile)
+    result = call_ai_json_response(prompt, max_tokens=900)
+    if isinstance(result, dict):
+        return {
+            "should_choose": bool(result.get("should_choose", False)),
+            "message": str(result.get("message", "")).strip(),
+            "why_not": str(result.get("why_not", "")).strip(),
+            "match_score": int(result.get("match_score", 0) or 0),
+        }
+
+    courses = [str(item).lower() for item in (college.get("courses") or [])]
+    recommended = [str(item).lower() for item in (user_profile.get("recommended_courses") or [])]
+    overlap = len(set(courses) & set(recommended))
+    should_choose = overlap > 0
+    return {
+        "should_choose": should_choose,
+        "message": "This college matches your profile well." if should_choose else "This college is acceptable but not the strongest match for your current profile.",
+        "why_not": "" if should_choose else "Course or level alignment is weaker than the top picks.",
+        "match_score": min(100, max(0, overlap * 25)),
+    }
+
+
+def paginate_items(items, page=1, page_size=15):
+    try:
+        page = max(1, int(page))
+    except Exception:
+        page = 1
+
+    try:
+        page_size = max(1, min(15, int(page_size)))
+    except Exception:
+        page_size = 15
+
+    total_count = len(items)
+    total_pages = max(1, (total_count + page_size - 1) // page_size)
+    if page > total_pages:
+        page = total_pages
+
+    start = (page - 1) * page_size
+    end = start + page_size
+    sliced = items[start:end]
+
+    return {
+        "items": sliced,
+        "page": page,
+        "page_size": page_size,
+        "total_count": total_count,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    }
+
+
+def build_college_filter_signature(user_level, ability, interest, skills, location, max_fee, course_override, search=None):
+    payload = {
+        "user_level": user_level,
+        "ability": ability,
+        "interest": interest,
+        "skills": skills or [],
+        "location": location or "",
+        "max_fee": max_fee if max_fee is not None else "",
+        "course_override": course_override or "",
+        "search": search or "",
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()

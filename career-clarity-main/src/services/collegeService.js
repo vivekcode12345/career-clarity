@@ -8,7 +8,7 @@ const fallbackColleges = [
 
 export async function searchColleges(filters) {
 	try {
-		const response = await api.get("/colleges", { params: filters });
+		const response = await api.get("/colleges/", { params: filters });
 		return response.data;
 	} catch {
 		const query = (filters?.search || "").toLowerCase();
@@ -23,5 +23,26 @@ export async function searchColleges(filters) {
 		});
 
 		return { colleges: filtered };
+	}
+}
+
+export async function getCollegeDetails(name) {
+	try {
+		const response = await api.get("/college/details/", { params: { name } });
+		return response.data;
+	} catch {
+		const matched = fallbackColleges.find((college) => (college.name || "").toLowerCase() === (name || "").toLowerCase());
+		if (!matched) {
+			throw new Error("Unable to load college details");
+		}
+
+		return {
+			name: matched.name,
+			location: matched.location,
+			courses: matched.course,
+			fees: matched.fees,
+			apply_link: "https://www.google.com/search?q=" + encodeURIComponent(matched.name + " official website"),
+			explanation: "This college aligns with your selected preferences for location, course direction, and fee comfort.",
+		};
 	}
 }
