@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from cv_module.views import chatbot_api
+from prediction_module.views import get_roadmap
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -14,4 +15,5 @@ urlpatterns = [
     path('api/auth/', include('accounts.urls')),
     path('api/test/', include('test_module.urls')),
     path('api/predict/', include('prediction_module.urls')),
+    path('api/roadmap/', get_roadmap),
 ]

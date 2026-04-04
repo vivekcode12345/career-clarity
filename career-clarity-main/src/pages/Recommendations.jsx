@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Loader from "../components/Loader";
-import CareerCard from "../components/CareerCard";
-import api from "../services/api"; 
+import { getCareerRecommendations } from "../services/careerService";
+import { getCurrentUser } from "../services/authService";
 import { openChatbot } from "../services/chatbotService";
 
 function Recommendations() {
@@ -10,6 +10,9 @@ function Recommendations() {
 	const [ability, setAbility] = useState("");
 	const [interest, setInterest] = useState("");
 	const [skills, setSkills] = useState([]);
+	const [skillTest, setSkillTest] = useState(null);
+	const [skillHistory, setSkillHistory] = useState([]);
+	const [savedRoadmapTitles, setSavedRoadmapTitles] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [errorMessage, setErrorMessage] = useState("");
 
@@ -19,14 +22,42 @@ function Recommendations() {
 			setErrorMessage("");
 
 			try {
-				
-				const res = await api.get("/predict/");
-				const data = res.data;
+				const data = await getCareerRecommendations();
+				const rawRecommendations = Array.isArray(data?.recommendations) ? data.recommendations : [];
+				const normalizedCareers = rawRecommendations
+					.map((item) => {
+						if (typeof item === "string") {
+							return {
+								title: item,
+								description: "Recommended based on your quick test profile and learning direction.",
+							};
+						}
 
-				setCareers((data.recommendations || []).slice(0, 3));
-				setAbility(data.ability || "");
-				setInterest(data.interest || "");
-				setSkills(data.skills || []);
+						if (item && typeof item === "object") {
+							return {
+								title: item.title || item.name || item.career || "Career Path",
+								description: item.description || "Recommended based on your quick test profile and learning direction.",
+								requiredSkills: item.requiredSkills || item.skills || [],
+								salaryRange: item.salaryRange || item.salary || "",
+							};
+						}
+
+						return null;
+					})
+					.filter(Boolean);
+
+				setCareers(normalizedCareers);
+				const currentUser = getCurrentUser() || {};
+				setAbility(data.ability || currentUser.ability || currentUser.abilityLevel || "N/A");
+				setInterest(data.interest || currentUser.interest || currentUser.interests?.[0] || "N/A");
+				setSkills(data.skills || currentUser.skills || []);
+				setSkillTest(data?.skillTest || null);
+				setSkillHistory(Array.isArray(data?.skillHistory) ? data.skillHistory : []);
+				setSavedRoadmapTitles(
+					Array.isArray(data.savedRoadmaps)
+						? data.savedRoadmaps.map((item) => item?.career_title).filter(Boolean)
+						: []
+				);
 			} catch (err) {
 				console.error(err);
 				setErrorMessage("Unable to load recommendations right now.");
@@ -50,7 +81,7 @@ function Recommendations() {
 		<div className="space-y-8">
 			<div className="cc-fade-in rounded-2xl border border-indigo-200 bg-indigo-50 p-5" style={{ animationDelay: "80ms" }}>
 				<p className="text-sm font-semibold text-indigo-700">Advanced Prediction</p>
-				<p className="mt-1 text-slate-700">Take a skill test to unlock deeper and more accurate recommendations.</p>
+					<p className="mt-1 text-slate-700">Take a skill test to unlock deeper and more accurate career options.</p>
 				<Link
 					to="/quick-test"
 					className="mt-3 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
@@ -74,7 +105,7 @@ function Recommendations() {
 			</div>
 
 			{/* Insights Cards */}
-			<div className="cc-fade-in grid gap-4 sm:grid-cols-3" style={{ animationDelay: "100ms" }}>
+			<div className="cc-fade-in grid gap-4 lg:grid-cols-4 sm:grid-cols-2" style={{ animationDelay: "100ms" }}>
 				{/* Ability Card */}
 				<div className="rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 p-6 shadow-md ring-1 ring-blue-200">
 					<div className="text-3xl mb-2">💪</div>
@@ -107,12 +138,61 @@ function Recommendations() {
 						)}
 					</div>
 				</div>
+
+				{/* Skill Test Card */}
+				<div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-md ring-1 ring-amber-200">
+					<div className="text-3xl mb-2">🧠</div>
+					<p className="text-sm font-semibold text-slate-600 uppercase">Skill Test History</p>
+					{skillHistory.length > 0 ? (
+						<div className="mt-3 space-y-3">
+							{skillTest?.skill && (
+								<div className="rounded-lg bg-white/80 p-3 shadow-sm ring-1 ring-amber-100">
+									<p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Latest Test</p>
+									<p className="font-bold text-amber-700">{skillTest.skill}</p>
+									<p className="text-sm text-slate-700">Level: {skillTest.level || "N/A"}</p>
+									<p className="text-sm text-slate-700">
+										Score: {skillTest.score ?? "N/A"}
+										{typeof skillTest.total === "number" ? ` / ${skillTest.total}` : ""}
+									</p>
+								</div>
+							)}
+
+							<div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+								{skillHistory.map((item, index) => (
+									<div key={`${item.skill || "skill"}-${index}`} className="rounded-lg bg-white/70 p-3 text-sm shadow-sm ring-1 ring-amber-100">
+										<div className="flex items-center justify-between gap-2">
+											<p className="font-semibold text-slate-800">{item.skill || "Unknown Skill"}</p>
+											<span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-700">
+												{item.level || "N/A"}
+											</span>
+										</div>
+										<p className="mt-1 text-slate-600">
+											Score: {item.score ?? "N/A"}
+											{typeof item.total === "number" ? ` / ${item.total}` : ""}
+										</p>
+									</div>
+								))}
+							</div>
+						</div>
+					) : skillTest?.skill ? (
+						<div className="mt-3 space-y-1 text-sm text-slate-700">
+							<p className="font-bold text-amber-700">{skillTest.skill}</p>
+							<p>Level: {skillTest.level || "N/A"}</p>
+							<p>
+								Score: {skillTest.score ?? "N/A"}
+								{typeof skillTest.total === "number" ? ` / ${skillTest.total}` : ""}
+							</p>
+						</div>
+					) : (
+						<p className="mt-3 text-sm text-slate-600">No skill test yet</p>
+					)}
+				</div>
 			</div>
 
 			{/* Recommended Careers Section */}
 			<div>
 				<h2 className="cc-fade-in text-2xl font-extrabold text-slate-900 mb-6" style={{ animationDelay: "150ms" }}>
-					🌟 Top Career Recommendations
+					🌟 Career Options
 				</h2>
 
 				{errorMessage && (
@@ -125,20 +205,32 @@ function Recommendations() {
 					{careers.length > 0 ? (
 						careers.map((career, index) => (
 							<div
-								key={index}
+								key={`${career.title}-${index}`}
 								className="cc-fade-in rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-md ring-1 ring-slate-100 transition hover:-translate-y-2 hover:border-indigo-300 hover:shadow-lg"
 								style={{ animationDelay: `${250 + index * 75}ms` }}
 							>
 								<div className="flex items-start justify-between">
 									<h3 className="text-xl font-bold text-slate-900">{career.title}</h3>
-									<span className="text-3xl">
-										{["💼", "🚀", "📊"][index % 3]}
-									</span>
+									<div className="flex items-center gap-2">
+										{savedRoadmapTitles.includes(career.title) && (
+											<span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-700">
+												Saved
+											</span>
+										)}
+										<span className="text-3xl">{["💼", "🚀", "📊"][index % 3]}</span>
+									</div>
 								</div>
 
 								<p className="mt-4 text-sm text-slate-600">
 									{career.description || "A rewarding career path based on your profile"}
 								</p>
+
+								{career.roadmapFocus && (
+									<div className="mt-4 rounded-lg bg-slate-50 p-3">
+										<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Roadmap Focus</p>
+										<p className="mt-1 text-sm text-slate-700">{career.roadmapFocus}</p>
+									</div>
+								)}
 
 								{/* Skills */}
 								{career.requiredSkills && (

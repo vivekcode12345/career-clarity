@@ -58,43 +58,85 @@ function Roadmap() {
 					<p className="mt-3 text-lg text-purple-100">
 						Follow this step-by-step guide to achieve your career goal
 					</p>
+					{roadmap.saved && (
+						<div className="mt-4 inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+							Saved to your account
+						</div>
+					)}
 				</div>
 			</div>
 
 			{/* Timeline Section */}
 			<div className="cc-fade-in rounded-3xl bg-white p-8 shadow-lg" style={{ animationDelay: "100ms" }}>
 				<h2 className="mb-8 text-2xl font-bold text-slate-900">📅 Career Timeline</h2>
-				<div className="space-y-4">
-					{roadmap.steps?.map((step, index) => (
-						<div
-							key={step}
-							className="cc-fade-in flex gap-6 pb-6 last:pb-0"
-							style={{ animationDelay: `${150 + index * 50}ms` }}
-						>
-							{/* Timeline Connector */}
-							<div className="flex flex-col items-center gap-3">
-								<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-lg font-bold text-white shadow-lg">
-									{index + 1}
-								</div>
-								{index < (roadmap.steps?.length || 0) - 1 && (
-									<div className="h-12 w-1 bg-gradient-to-b from-indigo-400 to-transparent"></div>
-								)}
-							</div>
-
-							{/* Step Content */}
-							<div className="flex-1 rounded-lg border-l-4 border-indigo-500 bg-gradient-to-r from-indigo-50 to-transparent p-4">
-								<p className="font-semibold text-slate-900">{step}</p>
-								<p className="mt-1 text-xs text-slate-600">
-									Phase {index + 1} of {roadmap.steps?.length || 0}
-								</p>
-							</div>
-						</div>
-					))}
+			{!roadmap.steps || roadmap.steps.length === 0 ? (
+				<div className="rounded-lg bg-amber-50 p-6 text-center text-amber-900">
+					<p>📊 No steps available. Please try again or select another career.</p>
 				</div>
-			</div>
+			) : (
+				<div className="space-y-4">
+					{roadmap.steps?.map((step, index) => {
+						const stepTitle = typeof step === "string" ? step : step?.title || "Step";
+						const stepDesc = typeof step === "object" ? step?.description : "";
+						const resources = typeof step === "object" ? step?.resources || [] : [];
 
-			{/* Requirements Grid */}
-			<div className="grid gap-6 lg:grid-cols-3">
+						return (
+							<div
+								key={stepTitle + index}
+								className="cc-fade-in flex gap-6 pb-8 last:pb-0"
+								style={{ animationDelay: `${150 + index * 50}ms` }}
+							>
+								{/* Timeline Connector */}
+								<div className="flex flex-col items-center gap-3">
+									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-lg font-bold text-white shadow-lg">
+										{index + 1}
+									</div>
+									{index < (roadmap.steps?.length || 0) - 1 && (
+										<div className="h-16 w-1 bg-gradient-to-b from-indigo-400 to-transparent"></div>
+									)}
+								</div>
+
+								{/* Step Content */}
+								<div className="flex-1 space-y-3">
+									<div className="rounded-lg border-l-4 border-indigo-500 bg-gradient-to-r from-indigo-50 to-transparent p-4">
+										<p className="font-bold text-lg text-slate-900">{stepTitle}</p>
+										{stepDesc && <p className="mt-2 text-sm text-slate-700">{stepDesc}</p>}
+										<p className="mt-2 text-xs font-medium text-indigo-600">
+											Phase {index + 1} of {roadmap.steps?.length || 0}
+										</p>
+									</div>
+
+									{/* Resources */}
+									{resources.length > 0 && (
+										<div className="ml-0 space-y-2 rounded-lg bg-slate-50 p-4">
+											<p className="text-xs font-semibold uppercase text-slate-600">Learning Resources</p>
+											{resources.map((resource, rIdx) => (
+												<a
+													key={rIdx}
+													href={resource.link}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-sm hover:border-indigo-300 hover:bg-indigo-50 transition"
+												>
+													<div>
+														<p className="font-medium text-slate-900">{resource.title}</p>
+														<p className="text-xs text-slate-500 capitalize">{resource.type}</p>
+													</div>
+													<span className="text-lg">🔗</span>
+												</a>
+											))}
+										</div>
+									)}
+								</div>
+							</div>
+						);
+					})}
+				</div>
+			)}
+		</div>
+
+		{/* Requirements Grid */}
+		<div className="grid gap-6 lg:grid-cols-3">
 				{/* Exams */}
 				{roadmap.exams && roadmap.exams.length > 0 && (
 					<div className="cc-fade-in rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200" style={{ animationDelay: "250ms" }}>
