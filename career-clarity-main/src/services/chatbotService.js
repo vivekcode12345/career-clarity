@@ -1,5 +1,15 @@
 import api from "./api";
 
+export function openChatbot(initialMessage = "") {
+	if (typeof window === "undefined") return;
+
+	window.dispatchEvent(
+		new CustomEvent("careerclarity:open-chatbot", {
+			detail: { initialMessage },
+		})
+	);
+}
+
 export async function sendChatMessage(message) {
 	try {
 		const response = await api.post("/chatbot/", { message });

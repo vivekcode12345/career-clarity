@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { getLastCVAnalysis } from "../services/resumeService";
+import { openChatbot } from "../services/chatbotService";
 
 function CVAnalysis() {
 	const location = useLocation();
@@ -168,12 +169,13 @@ function CVAnalysis() {
 				<p className="relative mt-2 text-indigo-100">
 					Chat with our AI advisor to discuss your career path in detail
 				</p>
-				<Link
-					to="/cv-upload"
+				<button
+					type="button"
+					onClick={() => openChatbot("Please review my CV analysis and suggest next steps.")}
 					className="relative mt-6 inline-block rounded-lg bg-white px-8 py-3 font-semibold text-indigo-600 transition hover:bg-indigo-50"
 				>
 					Start Chat
-				</Link>
+				</button>
 			</div>
 		</div>
 	);

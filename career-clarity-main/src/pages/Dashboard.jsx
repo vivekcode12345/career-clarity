@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCurrentUser } from "../services/authService";
+import { getQuickTest } from "../services/testService";
+import { openChatbot } from "../services/chatbotService";
 
 const actionCards = [
 	{
@@ -63,8 +65,28 @@ function Dashboard() {
 	const userName = user?.name || "Student";
 	const educationLevel = user?.educationLevel || "Class 12";
 	const isGraduate = educationLevel === "Graduate";
+	const [quickTestAttempted, setQuickTestAttempted] = useState(false);
 
-	const testAction = actionCards[0];
+	useEffect(() => {
+		const loadQuickTestStatus = async () => {
+			try {
+				const data = await getQuickTest();
+				setQuickTestAttempted(Boolean(data?.attempted));
+			} catch {
+				setQuickTestAttempted(false);
+			}
+		};
+
+		loadQuickTestStatus();
+	}, [user?.username, user?.name]);
+
+	const testAction = quickTestAttempted
+		? {
+			...actionCards[0],
+			title: "Take Skill Test",
+			description: "Continue with a skill assessment for deeper predictions.",
+		}
+		: actionCards[0];
 
 	const visibleCards = [testAction, ...actionCards.slice(1)].filter(
 		(card) => !card.onlyGraduate || isGraduate
@@ -77,8 +99,8 @@ function Dashboard() {
 
 		return {
 			...card,
-			label: "Quick Test",
-			value: "Ready to Start",
+			label: quickTestAttempted ? "Skill Test" : "Quick Test",
+			value: quickTestAttempted ? "Ready to Start" : "Ready to Start",
 		};
 	});
 
@@ -154,6 +176,7 @@ function Dashboard() {
 						// Emoji mapping for action cards
 						const emojiMap = {
 							"Take Quick Test": "🧠",
+							"Take Skill Test": "🧠",
 							"View Recommendations": "🎯",
 							"College Finder": "🏫",
 							"Alerts": "🔔",
@@ -191,12 +214,13 @@ function Dashboard() {
 				<p className="relative mt-2 text-indigo-100">
 					Chat with our AI career advisor to get personalized insights
 				</p>
-				<Link
-					to="/cv-upload"
+				<button
+					type="button"
+					onClick={() => openChatbot("I need guidance on my next career step.")}
 					className="relative mt-6 inline-block rounded-lg bg-white px-6 py-3 font-semibold text-indigo-600 transition hover:bg-indigo-50"
 				>
 					Start Chatting
-				</Link>
+				</button>
 			</section>
 		</div>
 	);

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Loader from "../components/Loader";
 import CareerCard from "../components/CareerCard";
 import api from "../services/api"; 
+import { openChatbot } from "../services/chatbotService";
 
 function Recommendations() {
 	const [careers, setCareers] = useState([]);
@@ -190,12 +191,13 @@ function Recommendations() {
 				<p className="relative mt-2 text-indigo-100">
 					Chat with our AI career advisor for personalized guidance
 				</p>
-				<Link
-					to="/cv-upload"
+				<button
+					type="button"
+					onClick={() => openChatbot("Help me understand which career path fits me best.")}
 					className="relative mt-6 inline-block rounded-lg bg-white px-8 py-3 font-semibold text-indigo-600 transition hover:bg-indigo-50"
 				>
 					Start Chat
-				</Link>
+				</button>
 			</div>
 		</div>
 	);
