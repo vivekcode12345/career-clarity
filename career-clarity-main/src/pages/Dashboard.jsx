@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import EmptyState from "../components/EmptyState";
+import { Skeleton, SkeletonCard } from "../components/Skeleton";
 import { getCurrentUser } from "../services/authService";
 import { openChatbot } from "../services/chatbotService";
 import { getDashboardSummary } from "../services/careerService";
@@ -68,6 +69,7 @@ function Dashboard() {
 	const userName = user?.name || "Student";
 	const educationLevel = user?.educationLevel || "Class 12";
 	const isGraduate = educationLevel === "Graduate";
+	const [isLoading, setIsLoading] = useState(true);
 	const [quickTestAttempted, setQuickTestAttempted] = useState(false);
 	const [dashboardSummary, setDashboardSummary] = useState({
 		top_career: null,
@@ -87,6 +89,7 @@ function Dashboard() {
 
 	useEffect(() => {
 		const loadDashboardData = async () => {
+			setIsLoading(true);
 			try {
 				const data = await getDashboardSummary({ useFallback: false });
 				setDashboardSummary({
@@ -123,6 +126,8 @@ function Dashboard() {
 						has_personalization_signal: false,
 					},
 				}));
+			} finally {
+				setIsLoading(false);
 			}
 		};
 
@@ -175,6 +180,33 @@ function Dashboard() {
 		return card;
 	});
 
+	if (isLoading) {
+		return (
+			<div className="space-y-8">
+				<section className="cc-card p-8 sm:p-10">
+					<Skeleton className="h-5 w-32" />
+					<Skeleton className="mt-4 h-12 w-2/3" />
+					<Skeleton className="mt-3 h-5 w-1/2" />
+					<div className="mt-8 grid gap-3 sm:grid-cols-3">
+						<Skeleton className="h-20 w-full" />
+						<Skeleton className="h-20 w-full" />
+						<Skeleton className="h-20 w-full" />
+					</div>
+				</section>
+				<div className="grid gap-4 sm:grid-cols-3">
+					<Skeleton className="h-32 w-full" />
+					<Skeleton className="h-32 w-full" />
+					<Skeleton className="h-32 w-full" />
+				</div>
+				<div className="grid gap-4 lg:grid-cols-3">
+					<SkeletonCard />
+					<SkeletonCard />
+					<SkeletonCard />
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="space-y-8">
 			{!hasProfileData && (
@@ -205,7 +237,7 @@ function Dashboard() {
 				
 				<div className="relative">
 					<p className="text-sm font-semibold uppercase tracking-widest text-indigo-300">Welcome back</p>
-					<h1 className="mt-2 text-4xl font-extrabold leading-tight sm:text-5xl">Hi, {userName} 👋</h1>
+					<h1 className="cc-h1 mt-2">Hi, {userName} 👋</h1>
 					<p className="mt-3 text-lg text-indigo-100">
 						Let's continue your journey to discover your perfect career path
 					</p>
@@ -234,7 +266,7 @@ function Dashboard() {
 					{visibleStatCards.map((stat, index) => (
 						<div
 							key={stat.label}
-							className="cc-fade-in group rounded-2xl bg-gradient-to-br p-6 shadow-lg ring-1 ring-white/20 transition hover:shadow-xl hover:ring-white/30"
+							className="cc-fade-in group rounded-2xl bg-gradient-to-br p-6 shadow-lg ring-1 ring-white/20 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-white/30"
 							style={{
 								backgroundImage: `linear-gradient(135deg, var(--stat-start), var(--stat-end))`,
 								"--stat-start": `rgba(${stat.color === "from-blue-500 to-cyan-400" ? "59, 130, 246" : stat.color === "from-emerald-500 to-teal-400" ? "16, 185, 129" : "168, 85, 247"}, 0.1)`,
@@ -257,7 +289,7 @@ function Dashboard() {
 			{/* Smart Insights Section */}
 			<section className="cc-fade-in" style={{ animationDelay: "130ms" }}>
 				<div className="grid gap-4 lg:grid-cols-3">
-					<div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
+					<div className="cc-card p-5">
 						<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">🎯 Top Career Recommendation</p>
 						{hasRecommendation ? (
 							<>
@@ -269,7 +301,7 @@ function Dashboard() {
 						)}
 					</div>
 
-					<div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
+					<div className="cc-card p-5">
 						<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">⚠️ Skill Gap Snapshot</p>
 						{!hasSkillData ? (
 							<p className="mt-2 text-sm text-slate-600">No skill data available. Upload CV or take skill test.</p>
@@ -284,7 +316,7 @@ function Dashboard() {
 						)}
 					</div>
 
-					<div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
+					<div className="cc-card p-5">
 						<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">🔔 Top Opportunities</p>
 						{hasPersonalizationSignal && dashboardSummary?.top_alerts?.length > 0 ? (
 							<div className="mt-2 space-y-2 text-sm text-slate-700">
@@ -301,7 +333,7 @@ function Dashboard() {
 					</div>
 				</div>
 
-				<div className="mt-4 rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
+				<div className="cc-card mt-4 p-5">
 					<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">🛤️ Progress Indicator</p>
 					<p className="mt-2 text-sm font-semibold text-slate-900">
 						{dashboardSummary?.progress?.label || "Step 0 of 5 completed"}
@@ -327,7 +359,7 @@ function Dashboard() {
 			<section className="cc-fade-in" style={{ animationDelay: "150ms" }}>
 				<div className="mb-6 flex items-center justify-between">
 					<div>
-						<h2 className="text-2xl font-extrabold text-slate-900">Quick Actions</h2>
+						<h2 className="cc-h2 text-slate-900">Quick Actions</h2>
 						<p className="mt-1 text-sm text-slate-600">Choose where to go next in your career journey</p>
 					</div>
 				</div>
@@ -348,7 +380,7 @@ function Dashboard() {
 							<Link
 								key={card.title}
 								to={card.path}
-								className="cc-fade-in group rounded-2xl bg-white/90 backdrop-blur-sm p-6 shadow-md ring-1 ring-slate-200 transition duration-300 hover:-translate-y-2 hover:shadow-xl hover:ring-indigo-300"
+								className="cc-fade-in cc-card group bg-white/90 backdrop-blur-sm"
 								style={{
 									animationDelay: `${200 + index * 75}ms`,
 								}}
@@ -378,7 +410,7 @@ function Dashboard() {
 				<button
 					type="button"
 					onClick={() => openChatbot("I need guidance on my next career step.")}
-					className="relative mt-6 inline-block rounded-lg bg-white px-6 py-3 font-semibold text-indigo-600 transition hover:bg-indigo-50"
+					className="cc-btn-secondary relative mt-6 border-white bg-white px-6 py-3 text-indigo-600 hover:bg-indigo-50"
 				>
 					Start Chatting
 				</button>

@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import logoFull from "../assets/logo-full.svg";
 import { logoutUser } from "../services/authService";
 
 const guestNavLinks = [
-	{ label: "Home", to: "/" },
+	{ label: "Features", to: "#features", type: "hash" },
+	{ label: "How it Works", to: "#how-it-works", type: "hash" },
 	{ label: "Login", to: "/login" },
 	{ label: "Register", to: "/register" },
 ];
@@ -18,9 +21,33 @@ const authNavLinks = [
 function Navbar() {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isLoggingOut, setIsLoggingOut] = useState(false);
+	const [isScrolled, setIsScrolled] = useState(false);
 	const navigate = useNavigate();
+	const location = useLocation();
 	const isLoggedIn = Boolean(localStorage.getItem("authToken"));
 	const navLinks = isLoggedIn ? authNavLinks : guestNavLinks;
+	const isGuestHome = !isLoggedIn && location.pathname === "/";
+
+	useEffect(() => {
+		if (!isGuestHome) {
+			setIsScrolled(true);
+			return;
+		}
+
+		const onScroll = () => {
+			setIsScrolled(window.scrollY > 24);
+		};
+
+		onScroll();
+		window.addEventListener("scroll", onScroll, { passive: true });
+		return () => window.removeEventListener("scroll", onScroll);
+	}, [isGuestHome]);
+
+	const headerClass = isGuestHome
+		? isScrolled
+			? "sticky top-0 z-40 border-b border-slate-200 bg-white/95 text-slate-900 shadow-lg backdrop-blur-2xl"
+			: "sticky top-0 z-40 border-b border-slate-200/70 bg-white/85 text-slate-900 shadow-md backdrop-blur-xl"
+		: "sticky top-0 z-40 border-b border-indigo-100/50 bg-white/40 backdrop-blur-2xl";
 
 	const handleLogout = async () => {
 		if (isLoggingOut) {
@@ -37,8 +64,22 @@ function Navbar() {
 		}
 	};
 
+	const handleHashClick = (hash, closeMenu = false) => {
+		if (location.pathname !== "/") {
+			navigate(`/${hash}`);
+		} else {
+			const section = document.querySelector(hash);
+			if (section) {
+				section.scrollIntoView({ behavior: "smooth", block: "start" });
+			}
+		}
+		if (closeMenu) {
+			setIsOpen(false);
+		}
+	};
+
 	return (
-		<header className="sticky top-0 z-40 border-b border-indigo-100/50 bg-white/40 backdrop-blur-2xl">
+		<header className={headerClass}>
 			<nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
 				<NavLink to={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
 					<img src={logoFull} alt="CareerClarity" className="h-10 w-auto drop-shadow-sm transition hover:scale-105" />
@@ -47,18 +88,28 @@ function Navbar() {
 				<ul className="hidden items-center gap-2 md:flex">
 					{navLinks.map((link, index) => (
 						<li key={link.label} style={{ animationDelay: `${index * 50}ms` }} className="cc-fade-in">
-							<NavLink
-								to={link.to}
-								className={({ isActive }) =>
-									`rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
-										isActive
-											? "bg-indigo-100/80 text-indigo-700 shadow-sm"
-											: "text-slate-600 hover:bg-indigo-50/60 hover:text-indigo-600"
-									}`
-								}
-							>
-								{link.label}
-							</NavLink>
+							{link.type === "hash" ? (
+								<button
+									type="button"
+									onClick={() => handleHashClick(link.to)}
+									className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-indigo-50/80 hover:text-indigo-700"
+								>
+									{link.label}
+								</button>
+							) : (
+								<NavLink
+									to={link.to}
+									className={({ isActive }) =>
+										`rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
+											isActive
+												? "bg-indigo-100/90 text-indigo-700 shadow-sm"
+												: "text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-700"
+										}`
+									}
+								>
+									{link.label}
+								</NavLink>
+							)}
 						</li>
 					))}
 					{isLoggedIn && (
@@ -78,7 +129,11 @@ function Navbar() {
 				<button
 					type="button"
 					onClick={() => setIsOpen((prev) => !prev)}
-					className="rounded-lg border border-indigo-100 bg-gradient-to-br from-white to-indigo-50/40 p-2 text-slate-600 transition-all duration-200 hover:border-indigo-200 hover:shadow-sm md:hidden"
+					className={`rounded-lg border p-2 transition-all duration-200 md:hidden ${
+						isGuestHome && !isScrolled
+							? "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+							: "border-indigo-100 bg-gradient-to-br from-white to-indigo-50/40 text-slate-600 hover:border-indigo-200 hover:shadow-sm"
+					}`}
 					aria-label="Toggle menu"
 				>
 					<svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -92,19 +147,29 @@ function Navbar() {
 					<ul className="space-y-2">
 						{navLinks.map((link) => (
 							<li key={link.label}>
-								<NavLink
-									to={link.to}
-									onClick={() => setIsOpen(false)}
-									className={({ isActive }) =>
-										`block rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
-											isActive
-												? "bg-indigo-100/80 text-indigo-700"
-												: "text-slate-700 hover:bg-indigo-50/60 hover:text-indigo-600"
-										}`
-									}
-								>
-									{link.label}
-								</NavLink>
+								{link.type === "hash" ? (
+									<button
+										type="button"
+										onClick={() => handleHashClick(link.to, true)}
+										className="block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-indigo-50/60 hover:text-indigo-600"
+									>
+										{link.label}
+									</button>
+								) : (
+									<NavLink
+										to={link.to}
+										onClick={() => setIsOpen(false)}
+										className={({ isActive }) =>
+											`block rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
+												isActive
+													? "bg-indigo-100/80 text-indigo-700"
+													: "text-slate-700 hover:bg-indigo-50/60 hover:text-indigo-600"
+											}`
+										}
+									>
+										{link.label}
+									</NavLink>
+								)}
 							</li>
 						))}
 						{isLoggedIn && (

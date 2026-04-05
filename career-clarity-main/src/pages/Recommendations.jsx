@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import EmptyState from "../components/EmptyState";
 import Loader from "../components/Loader";
+import { Skeleton, SkeletonCard } from "../components/Skeleton";
 import { getCareerRecommendations } from "../services/careerService";
 import { getCurrentUser } from "../services/authService";
 import { openChatbot } from "../services/chatbotService";
@@ -118,8 +119,23 @@ function Recommendations() {
 
 	if (isLoading) {
 		return (
-			<div className="flex h-64 items-center justify-center rounded-2xl bg-white shadow-lg">
-				<Loader label="Generating personalized recommendations..." />
+			<div className="space-y-6">
+				<div className="cc-card p-8">
+					<Skeleton className="h-5 w-40" />
+					<Skeleton className="mt-3 h-10 w-2/3" />
+					<Skeleton className="mt-3 h-4 w-1/2" />
+				</div>
+				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+					<Skeleton className="h-40 w-full" />
+					<Skeleton className="h-40 w-full" />
+					<Skeleton className="h-40 w-full" />
+					<Skeleton className="h-40 w-full" />
+				</div>
+				<div className="grid gap-6 lg:grid-cols-3">
+					<SkeletonCard className="p-6" />
+					<SkeletonCard className="p-6" />
+					<SkeletonCard className="p-6" />
+				</div>
 			</div>
 		);
 	}
@@ -129,6 +145,7 @@ function Recommendations() {
 			<EmptyState
 				message={blockedMessage}
 				className="border-amber-200 bg-amber-50 text-amber-900"
+				icon="🚫"
 			/>
 		);
 	}
@@ -139,15 +156,16 @@ function Recommendations() {
 				<EmptyState
 					message="Upload your CV to improve skill-based recommendations"
 					className="cc-fade-in border-indigo-200 bg-indigo-50 text-indigo-700"
+					icon="📄"
 				/>
 			)}
 
-			<div className="cc-fade-in rounded-2xl border border-indigo-200 bg-indigo-50 p-5" style={{ animationDelay: "80ms" }}>
+			<div className="cc-fade-in cc-card border-indigo-200 bg-indigo-50 p-5" style={{ animationDelay: "80ms" }}>
 				<p className="text-sm font-semibold text-indigo-700">Advanced Prediction</p>
 					<p className="mt-1 text-slate-700">Take a skill test to unlock deeper and more accurate career options.</p>
 				<Link
 					to="/quick-test"
-					className="mt-3 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+					className="cc-btn-primary mt-3 px-4 py-2"
 				>
 					Go to Skill Test →
 				</Link>
@@ -160,7 +178,7 @@ function Recommendations() {
 
 				<div className="relative">
 					<p className="text-sm font-semibold uppercase tracking-widest text-emerald-100">AI-Powered Insights</p>
-					<h1 className="mt-2 text-4xl font-extrabold">Your Career Path 🎯</h1>
+					<h1 className="cc-h1 mt-2">Your Career Path 🎯</h1>
 					<p className="mt-3 text-lg text-emerald-100">
 						Discover career opportunities tailored to your profile and abilities
 					</p>
@@ -170,21 +188,21 @@ function Recommendations() {
 			{/* Insights Cards */}
 			<div className="cc-fade-in grid gap-4 lg:grid-cols-4 sm:grid-cols-2" style={{ animationDelay: "100ms" }}>
 				{/* Ability Card */}
-				<div className="rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 p-6 shadow-md ring-1 ring-blue-200">
+				<div className="cc-card bg-gradient-to-br from-blue-50 to-cyan-50 p-6 ring-blue-200">
 					<div className="text-3xl mb-2">💪</div>
 					<p className="text-sm font-semibold text-slate-600 uppercase">Your Ability</p>
 					<p className="mt-3 text-xl font-bold text-blue-600">{ability || "N/A"}</p>
 				</div>
 
 				{/* Interest Card */}
-				<div className="rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 p-6 shadow-md ring-1 ring-purple-200">
+				<div className="cc-card bg-gradient-to-br from-purple-50 to-pink-50 p-6 ring-purple-200">
 					<div className="text-3xl mb-2">⚡</div>
 					<p className="text-sm font-semibold text-slate-600 uppercase">Your Interest</p>
 					<p className="mt-3 text-xl font-bold text-purple-600">{interest || "N/A"}</p>
 				</div>
 
 				{/* Skills Card */}
-				<div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 p-6 shadow-md ring-1 ring-emerald-200">
+				<div className="cc-card bg-gradient-to-br from-emerald-50 to-teal-50 p-6 ring-emerald-200">
 					<div className="text-3xl mb-2">🎓</div>
 					<p className="text-sm font-semibold text-slate-600 uppercase">Your Skills</p>
 					<div className="mt-3 text-sm font-semibold text-emerald-600">
@@ -203,7 +221,7 @@ function Recommendations() {
 				</div>
 
 				{/* Skill Test Card */}
-				<div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-md ring-1 ring-amber-200">
+				<div className="cc-card bg-gradient-to-br from-amber-50 to-orange-50 p-6 ring-amber-200">
 					<div className="text-3xl mb-2">🧠</div>
 					<p className="text-sm font-semibold text-slate-600 uppercase">Skill Test History</p>
 					{skillHistory.length > 0 ? (
@@ -254,7 +272,7 @@ function Recommendations() {
 
 			{/* Recommended Careers Section */}
 			<div>
-				<h2 className="cc-fade-in text-2xl font-extrabold text-slate-900 mb-6" style={{ animationDelay: "150ms" }}>
+				<h2 className="cc-fade-in cc-h2 mb-6 text-slate-900" style={{ animationDelay: "150ms" }}>
 					🌟 Career Options
 				</h2>
 
@@ -269,7 +287,7 @@ function Recommendations() {
 						careers.map((career, index) => (
 							<div
 								key={`${career.title}-${index}`}
-								className="cc-fade-in rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-md ring-1 ring-slate-100 transition hover:-translate-y-2 hover:border-indigo-300 hover:shadow-lg"
+								className="cc-fade-in cc-card border-2 border-slate-200"
 								style={{ animationDelay: `${250 + index * 75}ms` }}
 							>
 								<div className="flex items-start justify-between">
@@ -390,6 +408,7 @@ function Recommendations() {
 						<EmptyState
 							message="No career recommendations found. Try updating your profile or retaking the test."
 							className="cc-fade-in col-span-full border-amber-200 bg-amber-50 text-amber-900"
+							icon="🧭"
 						/>
 					)}
 				</div>
@@ -405,7 +424,7 @@ function Recommendations() {
 				<button
 					type="button"
 					onClick={() => openChatbot("Help me understand which career path fits me best.")}
-					className="relative mt-6 inline-block rounded-lg bg-white px-8 py-3 font-semibold text-indigo-600 transition hover:bg-indigo-50"
+					className="cc-btn-secondary relative mt-6 border-white bg-white px-8 py-3 text-indigo-600 hover:bg-indigo-50"
 				>
 					Start Chat
 				</button>

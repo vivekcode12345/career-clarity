@@ -1,26 +1,43 @@
 import { Link, Navigate } from "react-router-dom";
-import logoMark from "../assets/logo-mark.svg";
 import { useEffect, useState } from "react";
 import { isAuthenticated } from "../services/authService";
+import slide1 from "../assets/landing/slide1.jpeg";
+import slide2 from "../assets/landing/slide2.jpeg";
+import slide3 from "../assets/landing/slide3.jpeg";
+import slide4 from "../assets/landing/slide4.jpeg";
 
-const showcaseSlides = [
+const heroSlides = [
 	{
-		title: "Personalized guidance for every learner",
-		description:
-			"From Class 10 to graduate level, get curated paths and decisions tailored to your goals.",
-		points: ["Profile-aware suggestions", "Education-level specific routes", "Progressive learning journey"],
+		title: "Discover Your Perfect Career Path",
+		subtitle: "AI-powered guidance tailored to your skills and interests",
+		cta: "Get Started",
+		to: "/register",
+		image: slide1,
+		alt: "Students reviewing personalized AI career guidance",
 	},
 	{
-		title: "AI-powered career exploration",
-		description:
-			"Use smart recommendations, quick assessment insights, and chatbot support to make confident choices.",
-		points: ["Quick test insights", "Career recommendation engine", "Always-available assistant"],
+		title: "Identify Your Skill Gaps",
+		subtitle: "Understand what you need to learn to reach your goals",
+		cta: "Upload CV",
+		to: "/register",
+		image: slide2,
+		alt: "Career readiness dashboard showing skill gap analysis",
 	},
 	{
-		title: "Actionable next steps, not generic advice",
-		description:
-			"Move from confusion to clarity with roadmaps, colleges, alerts, and skill-based direction.",
-		points: ["Roadmap guidance", "College finder + alerts", "Real-world decision support"],
+		title: "Never Miss Opportunities",
+		subtitle: "Internships, scholarships, and jobs personalized for you",
+		cta: "Explore Alerts",
+		to: "/register",
+		image: slide3,
+		alt: "Student tracking scholarship, internship, and job opportunities",
+	},
+	{
+		title: "Build Confidence With Guided Next Steps",
+		subtitle: "From profile setup to roadmaps, every action is clear and measurable",
+		cta: "Start Now",
+		to: "/register",
+		image: slide4,
+		alt: "Learner exploring guided career action steps in a modern dashboard",
 	},
 ];
 
@@ -32,242 +49,222 @@ function Home() {
 		return <Navigate to="/dashboard" replace />;
 	}
 
-	// Guest view only
 	const [activeSlide, setActiveSlide] = useState(0);
+	const [isPaused, setIsPaused] = useState(false);
+	const [isTabVisible, setIsTabVisible] = useState(!document.hidden);
 
 	useEffect(() => {
-		const interval = window.setInterval(() => {
-			setActiveSlide((prev) => (prev + 1) % showcaseSlides.length);
-		}, 3500);
+		const handleVisibility = () => {
+			setIsTabVisible(!document.hidden);
+		};
 
-		return () => window.clearInterval(interval);
+		document.addEventListener("visibilitychange", handleVisibility);
+		return () => document.removeEventListener("visibilitychange", handleVisibility);
 	}, []);
 
+	useEffect(() => {
+		if (isPaused || !isTabVisible) {
+			return undefined;
+		}
+
+		const timer = window.setTimeout(() => {
+			setActiveSlide((prev) => (prev + 1) % heroSlides.length);
+		}, 3000);
+
+		return () => window.clearTimeout(timer);
+	}, [activeSlide, isPaused, isTabVisible]);
+
+	const goToPrevious = () => {
+		setActiveSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+	};
+
+	const goToNext = () => {
+		setActiveSlide((prev) => (prev + 1) % heroSlides.length);
+	};
+
 	return (
-		<div className="space-y-8">
-			{/* Hero Section with Gradient */}
-			<div className="cc-fade-in relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-500 to-blue-600 p-8 text-white shadow-2xl sm:p-12">
-				<div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-white/10 blur-3xl"></div>
-				<div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-white/20 blur-3xl"></div>
-
-				<div className="relative">
-					<div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/20 backdrop-blur-sm px-4 py-2 ring-1 ring-white/30">
-						<img src={logoMark} alt="CareerClarity" className="h-5 w-5" />
-						<p className="text-xs font-semibold uppercase tracking-wide">SIH Project • 25094</p>
-					</div>
-
-					<h1 className="mt-4 text-5xl font-extrabold leading-tight sm:text-6xl">
-						Your Future, Mapped Out for You 🎯
-					</h1>
-
-					<p className="mt-6 max-w-2xl text-lg leading-relaxed text-purple-100">
-						Get AI-powered personalized guidance from Class 10 to graduation. Discover your perfect career path, top colleges, and actionable roadmaps—all in one place.
-					</p>
-
-					<div className="mt-8 flex flex-wrap gap-4">
-						<Link
-							to="/register"
-							className="cc-cta inline-flex items-center gap-2 px-8 py-4 text-lg shadow-xl hover:shadow-2xl"
+		<div className="space-y-16 pb-6">
+			<header className="-mx-4 -mt-10 sm:-mx-6 lg:-mx-8">
+				<section className="relative min-h-[80vh] overflow-hidden">
+					{heroSlides.map((slide, index) => (
+						<div
+							key={slide.title}
+							className={`absolute inset-0 transition-all duration-1000 ease-out ${
+								index === activeSlide
+									? "z-10 translate-x-0 opacity-100"
+									: "z-0 translate-x-3 opacity-0"
+							}`}
+							aria-hidden={index !== activeSlide}
 						>
-							🚀 Get Started for Free
-						</Link>
-						<Link
-							to="/login"
-							className="inline-flex items-center gap-2 rounded-xl bg-white/20 backdrop-blur-sm px-8 py-4 font-semibold text-white ring-1 ring-white/30 transition hover:bg-white/30 hover:ring-white/50"
-						>
-							🔑 Sign In
-						</Link>
-					</div>
+							<img
+								src={slide.image}
+								alt={slide.alt}
+								className={`h-full w-full object-cover transition-transform duration-[3000ms] ease-out ${
+									index === activeSlide ? "scale-105" : "scale-100 blur-[1px]"
+								}`}
+								loading={index === 0 ? "eager" : "lazy"}
+							/>
+							<div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-slate-900/65" />
 
-					{/* Quick Stats */}
-					<div className="mt-10 grid gap-4 sm:grid-cols-3">
-						<div className="rounded-lg bg-white/10 backdrop-blur-sm px-4 py-3 ring-1 ring-white/20">
-							<p className="text-2xl font-bold">50+</p>
-							<p className="text-sm text-purple-100">Career Paths</p>
-						</div>
-						<div className="rounded-lg bg-white/10 backdrop-blur-sm px-4 py-3 ring-1 ring-white/20">
-							<p className="text-2xl font-bold">1000+</p>
-							<p className="text-sm text-purple-100">Colleges Tracked</p>
-						</div>
-						<div className="rounded-lg bg-white/10 backdrop-blur-sm px-4 py-3 ring-1 ring-white/20">
-							<p className="text-2xl font-bold">AI-Ready</p>
-							<p className="text-sm text-purple-100">24/7 Chatbot Support</p>
-						</div>
-					</div>
-				</div>
-			</div>
-
-			{/* Features Section */}
-			<div className="cc-fade-in space-y-4" style={{ animationDelay: "100ms" }}>
-				<h2 className="text-3xl font-extrabold text-slate-900">Why 1000+ students trust us</h2>
-
-				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-					<div className="rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 p-6 shadow-md ring-1 ring-blue-200">
-						<div className="text-4xl mb-3">📊</div>
-						<h3 className="font-bold text-slate-900">Smart Tests</h3>
-						<p className="mt-2 text-sm text-slate-700">Quick assessments to discover your strengths and career fit</p>
-					</div>
-					<div className="rounded-2xl bg-gradient-to-br from-purple-50 to-purple-100 p-6 shadow-md ring-1 ring-purple-200">
-						<div className="text-4xl mb-3">🎯</div>
-						<h3 className="font-bold text-slate-900">AI Recommendations</h3>
-						<p className="mt-2 text-sm text-slate-700">Get personalized career suggestions tailored to your profile</p>
-					</div>
-					<div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 shadow-md ring-1 ring-emerald-200">
-						<div className="text-4xl mb-3">🏫</div>
-						<h3 className="font-bold text-slate-900">College Finder</h3>
-						<p className="mt-2 text-sm text-slate-700">Explore 1000+ colleges by location, course, and fees</p>
-					</div>
-					<div className="rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 p-6 shadow-md ring-1 ring-orange-200">
-						<div className="text-4xl mb-3">🤖</div>
-						<h3 className="font-bold text-slate-900">AI Chatbot</h3>
-						<p className="mt-2 text-sm text-slate-700">Chat anytime with our AI advisor for instant guidance</p>
-					</div>
-				</div>
-			</div>
-
-			{/* Showcase Carousel */}
-			<div className="cc-fade-in space-y-4" style={{ animationDelay: "150ms" }}>
-				<h2 className="text-3xl font-extrabold text-slate-900">Platform Highlights</h2>
-
-				<div className="rounded-3xl bg-white p-8 shadow-xl sm:p-10 ring-1 ring-slate-200">
-					<div className="relative rounded-2xl border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-8">
-						<div className="absolute left-4 top-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-xl font-bold text-white">
-							{activeSlide + 1}
-						</div>
-
-						<h3 className="cc-heading mt-4 text-2xl font-extrabold text-slate-900">
-							{showcaseSlides[activeSlide].title}
-						</h3>
-
-						<p className="mt-4 text-slate-700 leading-relaxed">{showcaseSlides[activeSlide].description}</p>
-
-						<div className="mt-6 grid gap-3 sm:grid-cols-3">
-							{showcaseSlides[activeSlide].points.map((point, idx) => (
+							<div className="absolute inset-0 z-20 flex items-center justify-center px-6 py-20">
 								<div
-									key={point}
-									className="flex items-center gap-3 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-3"
-								>
-									<span className="text-xl font-bold text-indigo-600">✓</span>
-									<span className="font-medium text-slate-800">{point}</span>
-								</div>
-							))}
-						</div>
-					</div>
-
-					{/* Carousel Controls */}
-					<div className="mt-8 flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							{showcaseSlides.map((_, index) => (
-								<button
-									key={index}
-									type="button"
-									onClick={() => setActiveSlide(index)}
-									className={`transition-all ${
-										index === activeSlide
-											? "h-3 w-8 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600"
-											: "h-3 w-3 rounded-full bg-slate-300 hover:bg-slate-400"
+									className={`max-w-4xl rounded-3xl border border-white/30 bg-black/10 px-6 py-8 text-center text-white shadow-2xl backdrop-blur-sm transition-all duration-700 sm:px-10 ${
+										index === activeSlide ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
 									}`}
-									aria-label={`Go to slide ${index + 1}`}
-								/>
-							))}
+								>
+									<p className="animate-[heroBadgeIn_700ms_ease-out] rounded-full bg-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] ring-1 ring-white/35">
+										CareerClarity Platform
+									</p>
+									<h1 className="animate-[heroTitleIn_900ms_ease-out] mt-6 text-4xl font-extrabold leading-tight drop-shadow-lg sm:text-5xl lg:text-6xl">
+										{slide.title}
+									</h1>
+									<p className="animate-[heroSubIn_1000ms_ease-out] mx-auto mt-4 max-w-2xl text-base text-slate-100 sm:text-lg">
+										{slide.subtitle}
+									</p>
+									<div className="animate-[heroActionsIn_1100ms_ease-out] mt-8 flex flex-wrap items-center justify-center gap-4">
+										<Link
+											to={slide.to}
+											className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-7 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:from-indigo-400 hover:to-violet-400 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+										>
+											{slide.cta}
+										</Link>
+										<Link
+											to="/login"
+											className="rounded-xl border border-white/70 bg-white/10 px-7 py-3 text-sm font-semibold text-white backdrop-blur transition duration-300 hover:-translate-y-1 hover:bg-white/25 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+										>
+											Login
+										</Link>
+									</div>
+								</div>
+							</div>
 						</div>
-						<div className="flex gap-3">
+					))}
+
+					<div className="absolute bottom-20 left-1/2 z-30 h-1.5 w-56 -translate-x-1/2 overflow-hidden rounded-full bg-white/30" aria-hidden="true">
+						<div
+							key={`progress-${activeSlide}`}
+							className="h-full w-full origin-left animate-[grow_3000ms_linear] bg-white"
+						/>
+					</div>
+
+					<button
+						type="button"
+						onClick={goToPrevious}
+						onMouseEnter={() => setIsPaused(true)}
+						onMouseLeave={() => setIsPaused(false)}
+						className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full border border-white/50 bg-black/35 p-3 text-white transition duration-300 hover:-translate-y-1/2 hover:scale-110 hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+						aria-label="Previous slide"
+					>
+						←
+					</button>
+					<button
+						type="button"
+						onClick={goToNext}
+						onMouseEnter={() => setIsPaused(true)}
+						onMouseLeave={() => setIsPaused(false)}
+						className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full border border-white/50 bg-black/35 p-3 text-white transition duration-300 hover:-translate-y-1/2 hover:scale-110 hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+						aria-label="Next slide"
+					>
+						→
+					</button>
+
+					<div
+						className="absolute bottom-8 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2"
+						onMouseEnter={() => setIsPaused(true)}
+						onMouseLeave={() => setIsPaused(false)}
+					>
+						{heroSlides.map((slide, index) => (
 							<button
+								key={slide.title}
 								type="button"
-								onClick={() => setActiveSlide((prev) => (prev - 1 + showcaseSlides.length) % showcaseSlides.length)}
-								className="flex items-center gap-2 rounded-lg bg-indigo-100 px-4 py-2 font-semibold text-indigo-700 transition hover:bg-indigo-200"
-							>
-								← Prev
-							</button>
-							<button
-								type="button"
-								onClick={() => setActiveSlide((prev) => (prev + 1) % showcaseSlides.length)}
-								className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700"
-							>
-								Next →
-							</button>
-						</div>
+								onClick={() => setActiveSlide(index)}
+								className={`h-2.5 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+									index === activeSlide ? "w-8 bg-white" : "w-2.5 bg-white/60 hover:bg-white/80"
+								}`}
+								aria-label={`Go to ${slide.title}`}
+							/>
+						))}
 					</div>
-				</div>
-			</div>
+				</section>
+			</header>
 
-			{/* Key Features Cards */}
-			<div className="cc-fade-in space-y-4" style={{ animationDelay: "200ms" }}>
-				<h2 className="text-3xl font-extrabold text-slate-900">Everything You Need</h2>
-
-				<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-					<div className="rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl">
-						<div className="text-4xl mb-3">🎓</div>
-						<h3 className="font-bold text-slate-900">Education-Level Tailored</h3>
-						<p className="mt-2 text-sm text-slate-600">
-							Personalized guidance from Class 10 through graduation with education-specific recommendations
-						</p>
-					</div>
-					<div className="rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl">
-						<div className="text-4xl mb-3">🛣️</div>
-						<h3 className="font-bold text-slate-900">Roadmap Guidance</h3>
-						<p className="mt-2 text-sm text-slate-600">
-							Step-by-step career roadmaps with timelines, exams, certifications, and required skills
-						</p>
-					</div>
-					<div className="rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl">
-						<div className="text-4xl mb-3">💼</div>
-						<h3 className="font-bold text-slate-900">CV Analysis</h3>
-						<p className="mt-2 text-sm text-slate-600">
-							Upload your resume for AI-powered skill gap analysis and career suggestions
-						</p>
-					</div>
-					<div className="rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl">
-						<div className="text-4xl mb-3">📅</div>
-						<h3 className="font-bold text-slate-900">Smart Alerts</h3>
-						<p className="mt-2 text-sm text-slate-600">
-							Never miss deadlines with notifications for admissions, scholarships, and exams
-						</p>
-					</div>
-					<div className="rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl">
-						<div className="text-4xl mb-3">🔒</div>
-						<h3 className="font-bold text-slate-900">Your Privacy Matters</h3>
-						<p className="mt-2 text-sm text-slate-600">
-							Your data is secure with enterprise-grade encryption and zero tracking
-						</p>
-					</div>
-					<div className="rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl">
-						<div className="text-4xl mb-3">⚡</div>
-						<h3 className="font-bold text-slate-900">Always Available</h3>
-						<p className="mt-2 text-sm text-slate-600">
-							24/7 AI chatbot support to answer your questions anytime, anywhere
-						</p>
-					</div>
-				</div>
-			</div>
-
-			{/* CTA Section */}
-			<div className="cc-fade-in relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-center text-white shadow-xl sm:p-12" style={{ animationDelay: "250ms" }}>
-				<div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
-				<div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
-
-				<div className="relative">
-					<h2 className="text-3xl font-extrabold sm:text-4xl">Ready to shape your future? 🚀</h2>
-					<p className="mt-4 text-lg text-purple-100">
-						Join thousands of students getting clarity on their career path with AI-powered guidance
+			<section id="features" className="cc-fade-in scroll-mt-28" style={{ animationDelay: "80ms" }}>
+				<div className="mx-auto max-w-6xl">
+					<h2 className="text-center text-3xl font-extrabold text-slate-900 sm:text-4xl">Why Choose CareerClarity?</h2>
+					<p className="mx-auto mt-3 max-w-2xl text-center text-slate-600">
+						A complete guidance platform designed to move you from confusion to confident decisions.
 					</p>
+					<div className="mt-10 grid gap-6 md:grid-cols-3">
+						<article className="group rounded-2xl bg-gradient-to-br from-white to-indigo-50 p-7 shadow-md ring-1 ring-slate-200 transition duration-300 hover:-translate-y-2 hover:shadow-xl">
+							<p className="text-3xl" aria-hidden="true">🎯</p>
+							<h3 className="mt-4 text-xl font-bold text-slate-900 transition duration-300 group-hover:text-indigo-600">Smart Career Recommendations</h3>
+							<p className="mt-2 text-sm leading-6 text-slate-600">
+								Get AI-backed recommendations aligned to your interests, performance, and skills.
+							</p>
+						</article>
+						<article className="group rounded-2xl bg-gradient-to-br from-white to-violet-50 p-7 shadow-md ring-1 ring-slate-200 transition duration-300 hover:-translate-y-2 hover:shadow-xl">
+							<p className="text-3xl" aria-hidden="true">🧠</p>
+							<h3 className="mt-4 text-xl font-bold text-slate-900 transition duration-300 group-hover:text-indigo-600">Skill Gap Analysis</h3>
+							<p className="mt-2 text-sm leading-6 text-slate-600">
+								Know exactly what to learn next with focused skill insights from your profile and CV.
+							</p>
+						</article>
+						<article className="group rounded-2xl bg-gradient-to-br from-white to-cyan-50 p-7 shadow-md ring-1 ring-slate-200 transition duration-300 hover:-translate-y-2 hover:shadow-xl">
+							<p className="text-3xl" aria-hidden="true">🔔</p>
+							<h3 className="mt-4 text-xl font-bold text-slate-900 transition duration-300 group-hover:text-indigo-600">Real-time Opportunities</h3>
+							<p className="mt-2 text-sm leading-6 text-slate-600">
+								Track internships, scholarships, and jobs personalized to your education level and goals.
+							</p>
+						</article>
+					</div>
+				</div>
+			</section>
 
-					<div className="mt-8 flex flex-wrap justify-center gap-4">
+			<section id="how-it-works" className="cc-fade-in scroll-mt-28" style={{ animationDelay: "120ms" }}>
+				<div className="mx-auto max-w-6xl rounded-3xl bg-white p-6 shadow-lg ring-1 ring-slate-200 sm:p-8">
+					<h2 className="text-center text-3xl font-extrabold text-slate-900 sm:text-4xl">How It Works</h2>
+					<div className="mt-10 grid gap-5 md:grid-cols-3">
+						<div className="rounded-2xl bg-gradient-to-br from-slate-50 to-indigo-50 p-6 text-center transition duration-300 hover:-translate-y-1 hover:shadow-md">
+							<p className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">1</p>
+							<h3 className="mt-4 text-lg font-bold text-slate-900">Complete Profile</h3>
+							<p className="mt-2 text-sm text-slate-600">Add interests, skills, and education details.</p>
+						</div>
+						<div className="rounded-2xl bg-gradient-to-br from-slate-50 to-violet-50 p-6 text-center transition duration-300 hover:-translate-y-1 hover:shadow-md">
+							<p className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">2</p>
+							<h3 className="mt-4 text-lg font-bold text-slate-900">Take Tests / Upload CV</h3>
+							<p className="mt-2 text-sm text-slate-600">Share your strengths so recommendations stay precise.</p>
+						</div>
+						<div className="rounded-2xl bg-gradient-to-br from-slate-50 to-cyan-50 p-6 text-center transition duration-300 hover:-translate-y-1 hover:shadow-md">
+							<p className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">3</p>
+							<h3 className="mt-4 text-lg font-bold text-slate-900">Get Recommendations & Alerts</h3>
+							<p className="mt-2 text-sm text-slate-600">Receive roadmaps, colleges, and opportunities to act on.</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section className="cc-fade-in" style={{ animationDelay: "160ms" }}>
+				<div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 to-violet-600 p-10 text-center text-white shadow-xl">
+					<h2 className="text-3xl font-extrabold sm:text-4xl">Start Your Career Journey Today</h2>
+					<p className="mx-auto mt-3 max-w-2xl text-indigo-100">
+						Join CareerClarity and unlock personalized guidance built around your goals.
+					</p>
+					<div className="mt-8 flex flex-wrap items-center justify-center gap-4">
 						<Link
 							to="/register"
-							className="inline-flex items-center gap-2 rounded-lg bg-white px-8 py-4 font-bold text-indigo-600 transition hover:bg-purple-50"
+							className="rounded-xl bg-white px-8 py-3 font-semibold text-indigo-700 transition duration-300 hover:-translate-y-0.5 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
 						>
-							Create Free Account →
+							Get Started
 						</Link>
 						<Link
 							to="/login"
-							className="inline-flex items-center gap-2 rounded-lg border-2 border-white bg-transparent px-8 py-4 font-bold text-white transition hover:bg-white/10"
+							className="rounded-xl border border-white/70 px-8 py-3 font-semibold text-white transition duration-300 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
 						>
-							Already a member? Sign in →
+							Login
 						</Link>
 					</div>
 				</div>
-			</div>
+			</section>
 		</div>
 	);
 }
