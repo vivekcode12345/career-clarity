@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
  * Verifies system requirements before starting skill test
  * Checks: camera permissions, microphone, fullscreen capability, network
  */
-const SystemCheckPage = ({ skillName, onCheckComplete, onCancel }) => {
+const SystemCheckPage = ({ skillName, onCheckComplete, onCancel, isPreparingQuestions = false }) => {
   const [checks, setChecks] = useState({
     browser: { status: "checking", message: "Checking browser compatibility..." },
     fullscreen: { status: "checking", message: "Checking fullscreen support..." },
@@ -177,14 +177,14 @@ const SystemCheckPage = ({ skillName, onCheckComplete, onCancel }) => {
         <div className="space-y-3">
           <button
             onClick={() => onCheckComplete(skillName)}
-            disabled={!allChecksPassed || isChecking}
+            disabled={!allChecksPassed || isChecking || isPreparingQuestions}
             className={`w-full font-bold py-3 rounded-lg transition-all ${
-              allChecksPassed && !isChecking
+              allChecksPassed && !isChecking && !isPreparingQuestions
                 ? "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg"
                 : "bg-slate-300 text-slate-600 cursor-not-allowed"
             }`}
           >
-            {isChecking ? "Checking..." : "✨ Enter Fullscreen"}
+            {isChecking ? "Checking..." : isPreparingQuestions ? "⏳ Preparing questions..." : "✨ Enter Fullscreen"}
           </button>
           <button
             onClick={onCancel}

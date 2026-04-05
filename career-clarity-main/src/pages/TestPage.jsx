@@ -10,6 +10,16 @@ import { getCurrentUser } from "../services/authService";
 const WARNING_DURATION_MS = 2500;
 const QUICK_TEST_DURATION_SECONDS = 10 * 60;
 const SKILL_TEST_DURATION_SECONDS = 20 * 60;
+const FULLSCREEN_EXIT_GRACE_SECONDS = 10;
+const PREPARING_TIP_ROTATION_MS = 2500;
+
+const TEST_PREPARATION_TIPS = [
+  "Read each question fully before selecting an option.",
+  "Eliminate clearly wrong choices first to improve accuracy.",
+  "Manage time evenly across all questions.",
+  "Use your first instinct unless you spot a clear mistake.",
+  "Stay calm and avoid rushing the final questions.",
+];
 
 const TestPage = () => {
   const navigate = useNavigate();
@@ -25,6 +35,10 @@ const TestPage = () => {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSecurityWarning, setShowSecurityWarning] = useState(false);
+  const [showFullscreenExitWarning, setShowFullscreenExitWarning] = useState(false);
+  const [fullscreenExitCountdown, setFullscreenExitCountdown] = useState(FULLSCREEN_EXIT_GRACE_SECONDS);
+  const [isPreparingQuestions, setIsPreparingQuestions] = useState(false);
+  const [tipIndex, setTipIndex] = useState(0);
   const [availableSkills, setAvailableSkills] = useState([]);
   const [cooldownInfo, setCooldownInfo] = useState({
     cooldown: false,
@@ -34,6 +48,11 @@ const TestPage = () => {
 
   const timerRef = useRef(null);
   const warningRef = useRef(null);
+  const fullscreenExitTimeoutRef = useRef(null);
+  const fullscreenExitIntervalRef = useRef(null);
+  const preparingTipsIntervalRef = useRef(null);
+  const intentionalFullscreenExitRef = useRef(false);
+  const autoSubmitTriggeredRef = useRef(false);
   const currentUserKey = getCurrentUser()?.username || getCurrentUser()?.name || "guest";
 
   const isSkillTestPage = page === "skillTest";
@@ -43,9 +62,80 @@ const TestPage = () => {
     return () => {
       stopTimer();
       clearWarningTimer();
+      clearFullscreenExitWarningTimers();
+      clearPreparingTipsTimer();
       exitFullscreen();
     };
   }, [currentUserKey]);
+
+  useEffect(() => {
+    if (!isPreparingQuestions) {
+      clearPreparingTipsTimer();
+      setTipIndex(0);
+      return undefined;
+    }
+
+    preparingTipsIntervalRef.current = setInterval(() => {
+      setTipIndex((prev) => (prev + 1) % TEST_PREPARATION_TIPS.length);
+    }, PREPARING_TIP_ROTATION_MS);
+
+    return () => clearPreparingTipsTimer();
+  }, [isPreparingQuestions]);
+
+  useEffect(() => {
+    if (page !== "skillTest") return undefined;
+
+    const onFullscreenChange = () => {
+      const active = Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement
+      );
+      setIsFullscreen(active);
+
+      if (active) {
+        clearFullscreenExitWarningTimers();
+        setShowFullscreenExitWarning(false);
+        setFullscreenExitCountdown(FULLSCREEN_EXIT_GRACE_SECONDS);
+        return;
+      }
+
+      if (intentionalFullscreenExitRef.current) {
+        intentionalFullscreenExitRef.current = false;
+        return;
+      }
+
+      triggerFullscreenExitWarning();
+    };
+
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    document.addEventListener("MSFullscreenChange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", onFullscreenChange);
+    };
+  }, [page]);
+
+  useEffect(() => {
+    if (page !== "skillTest") return undefined;
+
+    const watchdog = setInterval(() => {
+      const active = Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement
+      );
+
+      setIsFullscreen(active);
+      if (!active && !intentionalFullscreenExitRef.current) {
+        triggerFullscreenExitWarning();
+      }
+    }, 400);
+
+    return () => clearInterval(watchdog);
+  }, [page]);
 
   useEffect(() => {
     if (!isSkillTestPage) return undefined;
@@ -88,6 +178,16 @@ const TestPage = () => {
 
     const onKeyDown = (event) => {
       const key = event.key.toLowerCase();
+
+      if (key === "escape" || key === "esc") {
+        event.preventDefault();
+        triggerWarning();
+        if (page === "skillTest") {
+          triggerFullscreenExitWarning();
+        }
+        return;
+      }
+
       const blockedCombo =
         (event.ctrlKey && ["c", "v", "x", "a", "p", "s", "u"].includes(key)) ||
         (event.metaKey && ["c", "v", "x", "a", "p", "s", "u"].includes(key)) ||
@@ -105,7 +205,8 @@ const TestPage = () => {
     document.addEventListener("contextmenu", onContextMenu);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", onBlur);
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("keyup", onKeyDown, true);
 
     return () => {
       document.removeEventListener("copy", onCopy);
@@ -114,7 +215,8 @@ const TestPage = () => {
       document.removeEventListener("contextmenu", onContextMenu);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("keyup", onKeyDown, true);
     };
   }, [isSkillTestPage]);
 
@@ -123,6 +225,49 @@ const TestPage = () => {
       clearTimeout(warningRef.current);
       warningRef.current = null;
     }
+  };
+
+  const clearPreparingTipsTimer = () => {
+    if (preparingTipsIntervalRef.current) {
+      clearInterval(preparingTipsIntervalRef.current);
+      preparingTipsIntervalRef.current = null;
+    }
+  };
+
+  const clearFullscreenExitWarningTimers = () => {
+    if (fullscreenExitTimeoutRef.current) {
+      clearTimeout(fullscreenExitTimeoutRef.current);
+      fullscreenExitTimeoutRef.current = null;
+    }
+    if (fullscreenExitIntervalRef.current) {
+      clearInterval(fullscreenExitIntervalRef.current);
+      fullscreenExitIntervalRef.current = null;
+    }
+  };
+
+  const triggerFullscreenExitWarning = () => {
+    if (page !== "skillTest") return;
+    if (fullscreenExitTimeoutRef.current) return;
+
+    clearFullscreenExitWarningTimers();
+    setShowFullscreenExitWarning(true);
+    setFullscreenExitCountdown(FULLSCREEN_EXIT_GRACE_SECONDS);
+
+    fullscreenExitIntervalRef.current = setInterval(() => {
+      setFullscreenExitCountdown((prev) => {
+        if (prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    fullscreenExitTimeoutRef.current = setTimeout(() => {
+      if (autoSubmitTriggeredRef.current) return;
+      autoSubmitTriggeredRef.current = true;
+      setShowFullscreenExitWarning(false);
+      handleAutoSubmit();
+    }, FULLSCREEN_EXIT_GRACE_SECONDS * 1000);
   };
 
   const stopTimer = () => {
@@ -217,6 +362,10 @@ const TestPage = () => {
         element.msRequestFullscreen();
       }
       setIsFullscreen(true);
+      autoSubmitTriggeredRef.current = false;
+      clearFullscreenExitWarningTimers();
+      setShowFullscreenExitWarning(false);
+      setFullscreenExitCountdown(FULLSCREEN_EXIT_GRACE_SECONDS);
       return true;
     } catch (err) {
       setIsFullscreen(false);
@@ -227,6 +376,7 @@ const TestPage = () => {
 
   const exitFullscreen = async () => {
     try {
+      intentionalFullscreenExitRef.current = true;
       if (document.fullscreenElement && document.exitFullscreen) {
         await document.exitFullscreen();
       } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
@@ -240,6 +390,17 @@ const TestPage = () => {
     }
   };
 
+  const handleReturnToFullscreen = async () => {
+    setError("");
+    const entered = await enterFullscreen();
+    if (!entered) {
+      setError("Fullscreen is required for this test. Please re-enter fullscreen or your test will be auto-submitted.");
+      triggerFullscreenExitWarning();
+      return;
+    }
+    setShowFullscreenExitWarning(false);
+  };
+
   const handleSkillSelect = (skill) => {
     setSelectedSkill(skill);
     setPage("systemCheck");
@@ -247,17 +408,22 @@ const TestPage = () => {
 
   const handleSystemCheckComplete = async () => {
     try {
+      if (isPreparingQuestions) return;
+
       setLoading(true);
       setError("");
+      setIsPreparingQuestions(true);
 
       const entered = await enterFullscreen();
       if (!entered) {
+        setIsPreparingQuestions(false);
         setPage("systemCheck");
         return;
       }
 
       const skillTestData = await getSkillTest(selectedSkill);
       if (!skillTestData?.questions?.length) {
+        setIsPreparingQuestions(false);
         setError(skillTestData?.message || "No questions available for this skill.");
         setPage("error");
         return;
@@ -266,13 +432,16 @@ const TestPage = () => {
       setQuestions(skillTestData.questions);
       setCurrentQuestion(0);
       setAnswers({});
+      setIsPreparingQuestions(false);
       setPage("skillTest");
       startTimer(SKILL_TEST_DURATION_SECONDS);
     } catch (err) {
+      setIsPreparingQuestions(false);
       const message = err?.response?.data?.message || "Failed to load skill test questions.";
       setError(message);
       setPage("error");
     } finally {
+      setIsPreparingQuestions(false);
       setLoading(false);
     }
   };
@@ -287,12 +456,32 @@ const TestPage = () => {
     }));
   };
 
-  const handleSubmitTest = async () => {
+  const buildSubmissionAnswers = (forceComplete = false) => {
+    const preparedAnswers = { ...answers };
+
+    if (!forceComplete) {
+      return preparedAnswers;
+    }
+
+    questions.forEach((questionItem) => {
+      const questionId = String(questionItem?.id || "");
+      if (!questionId || preparedAnswers[questionId]) return;
+
+      const options = questionItem?.options || {};
+      const firstOptionKey = Object.keys(options)[0] || "A";
+      preparedAnswers[questionId] = firstOptionKey;
+    });
+
+    return preparedAnswers;
+  };
+
+  const handleSubmitTest = async ({ forceComplete = false } = {}) => {
     try {
       setLoading(true);
+      const submissionAnswers = buildSubmissionAnswers(forceComplete);
 
       if (page === "quickTest") {
-        await submitQuickTest(answers);
+        await submitQuickTest(submissionAnswers);
         stopTimer();
         setQuestions([]);
         setAnswers({});
@@ -312,14 +501,20 @@ const TestPage = () => {
       }
 
       if (page === "skillTest") {
-        const submitResponse = await submitSkillTest(answers, selectedSkill);
+        clearFullscreenExitWarningTimers();
+        setShowFullscreenExitWarning(false);
+        const submitResponse = await submitSkillTest(submissionAnswers, selectedSkill);
         stopTimer();
         await exitFullscreen();
         setResult(submitResponse);
         setPage("result");
       }
     } catch (err) {
-      const message = err?.response?.data?.message || "Failed to submit test.";
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.response?.data?.detail ||
+        "Failed to submit test.";
       setError(message);
       setPage("error");
     } finally {
@@ -328,13 +523,72 @@ const TestPage = () => {
   };
 
   const handleAutoSubmit = () => {
-    handleSubmitTest();
+    clearFullscreenExitWarningTimers();
+    setShowFullscreenExitWarning(false);
+    handleSubmitTest({ forceComplete: true });
   };
 
   const SecurityWarning = () => (
     <div className="fixed top-4 right-4 z-50 rounded-lg bg-red-600 px-5 py-3 text-white shadow-xl">
       <p className="font-semibold">Security Warning</p>
       <p className="text-sm">Restricted action detected. Stay on the test page.</p>
+    </div>
+  );
+
+  const FullscreenExitWarningModal = () => (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
+      <div className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-6 shadow-2xl">
+        <h3 className="text-xl font-extrabold text-red-700">⚠️ Fullscreen Exit Detected</h3>
+        <p className="mt-2 text-sm text-slate-700">
+          You exited fullscreen during the skill test. Return to fullscreen now to continue safely.
+        </p>
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          Auto-submit in {fullscreenExitCountdown}s if ignored.
+        </p>
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleReturnToFullscreen}
+            className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700"
+          >
+            Return to Fullscreen
+          </button>
+          <button
+            type="button"
+            onClick={handleAutoSubmit}
+            className="flex-1 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            Submit Test Now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const PreparingQuestionsModal = () => (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+          <div>
+            <h3 className="text-lg font-extrabold text-slate-900">Preparing questions...</h3>
+            <p className="text-sm text-slate-600">Server is generating your skill test. Please wait.</p>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-indigo-700">Tip for better performance</p>
+          <p className="mt-2 text-sm font-medium text-slate-700">💡 {TEST_PREPARATION_TIPS[tipIndex]}</p>
+          <div className="mt-4 flex items-center gap-1">
+            {TEST_PREPARATION_TIPS.map((_, index) => (
+              <span
+                key={index}
+                className={`h-1.5 flex-1 rounded-full ${index === tipIndex ? "bg-indigo-600" : "bg-indigo-200"}`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -373,11 +627,15 @@ const TestPage = () => {
 
   if (page === "systemCheck") {
     return (
-      <SystemCheckPage
-        skillName={selectedSkill}
-        onCheckComplete={handleSystemCheckComplete}
-        onCancel={() => setPage("skillsSelection")}
-      />
+      <>
+        <SystemCheckPage
+          skillName={selectedSkill}
+          onCheckComplete={handleSystemCheckComplete}
+          onCancel={() => setPage("skillsSelection")}
+          isPreparingQuestions={isPreparingQuestions}
+        />
+        {isPreparingQuestions ? <PreparingQuestionsModal /> : null}
+      </>
     );
   }
 
@@ -462,6 +720,7 @@ const TestPage = () => {
     return (
       <div className={`min-h-screen px-4 py-8 ${isFullscreen ? "bg-slate-900" : "bg-slate-100"}`}>
         {showSecurityWarning && <SecurityWarning />}
+        {showFullscreenExitWarning && <FullscreenExitWarningModal />}
 
         <div className="mx-auto max-w-5xl">
           <div className="mb-6 rounded-2xl border border-blue-500/40 bg-slate-800/90 p-6 shadow-2xl">

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import logoMark from "../assets/logo-mark.svg";
 
 function Footer() {
@@ -17,9 +18,18 @@ function Footer() {
 				<div>
 					<h4 className="text-sm font-semibold uppercase tracking-wide text-slate-700">Quick Links</h4>
 					<ul className="mt-3 space-y-2 text-sm text-slate-600">
-						<li>Dashboard</li>
-						<li>Recommendations</li>
-						<li>College Finder</li>
+						<li>
+							<Link to="/dashboard" className="transition hover:text-indigo-600">Dashboard</Link>
+						</li>
+						<li>
+							<Link to="/recommendations" className="transition hover:text-indigo-600">Recommendations</Link>
+						</li>
+						<li>
+							<Link to="/college-finder" className="transition hover:text-indigo-600">College Finder</Link>
+						</li>
+						<li>
+							<Link to="/alerts" className="transition hover:text-indigo-600">Alerts</Link>
+						</li>
 					</ul>
 				</div>
 

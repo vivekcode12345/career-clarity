@@ -97,6 +97,23 @@ const fallbackAlerts = [
 		deadline_display: "2026-04-18",
 		link: "https://www.jee.gov.in/",
 		source: "Official admissions portal",
+		detail_points: [
+			"Category: Admission",
+			"Eligibility: Class 12 students",
+			"Deadline: 2026-04-18",
+			"Source: Official admissions portal",
+		],
+		requirements: [
+			"Class 12 qualification as per notice",
+			"Government ID and academic documents",
+			"Read official instructions before submission",
+		],
+		application_steps: [
+			"Visit official portal",
+			"Complete registration and form details",
+			"Upload documents and submit before deadline",
+		],
+		official_note: "Verify all criteria and timelines on the official portal before applying.",
 	},
 	{
 		id: 2,
@@ -108,6 +125,23 @@ const fallbackAlerts = [
 		deadline_display: "2026-03-30",
 		link: "https://scholarships.gov.in/",
 		source: "National Scholarship Portal",
+		detail_points: [
+			"Category: Scholarship",
+			"Eligibility: Class 10, Class 12, UG and PG students",
+			"Deadline: 2026-03-30",
+			"Source: National Scholarship Portal",
+		],
+		requirements: [
+			"Match scholarship scheme eligibility criteria",
+			"Valid institute and identity proof",
+			"Income and category documents where required",
+		],
+		application_steps: [
+			"Sign in to scholarship portal",
+			"Choose relevant scheme and verify eligibility",
+			"Submit application and keep acknowledgement",
+		],
+		official_note: "Use only official scholarship portal links for submission.",
 	},
 	{
 		id: 3,
@@ -119,6 +153,23 @@ const fallbackAlerts = [
 		deadline_display: "2026-04-10",
 		link: "https://cuet.nta.nic.in/",
 		source: "NTA",
+		detail_points: [
+			"Category: Exam",
+			"Eligibility: Class 12 students",
+			"Deadline: 2026-04-10",
+			"Source: NTA",
+		],
+		requirements: [
+			"Check CUET eligibility rules",
+			"Keep mark sheets and ID ready",
+			"Review exam pattern and official syllabus",
+		],
+		application_steps: [
+			"Open CUET official portal",
+			"Complete registration and exam preferences",
+			"Pay fee and submit final form",
+		],
+		official_note: "Refer to NTA official notifications for latest updates.",
 	},
 ];
 

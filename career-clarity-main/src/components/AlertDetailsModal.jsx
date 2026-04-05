@@ -4,6 +4,9 @@ function AlertDetailsModal({ isOpen, alert, onClose }) {
 	useEffect(() => {
 		if (!isOpen) return;
 
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = "hidden";
+
 		const handleKeyDown = (event) => {
 			if (event.key === "Escape") {
 				onClose();
@@ -11,7 +14,10 @@ function AlertDetailsModal({ isOpen, alert, onClose }) {
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
-		return () => window.removeEventListener("keydown", handleKeyDown);
+		return () => {
+			document.body.style.overflow = previousOverflow;
+			window.removeEventListener("keydown", handleKeyDown);
+		};
 	}, [isOpen, onClose]);
 
 	if (!isOpen || !alert) return null;
@@ -25,14 +31,17 @@ function AlertDetailsModal({ isOpen, alert, onClose }) {
 	};
 
 	const badgeStyle = badgeStyles[alert.type?.toLowerCase()] || badgeStyles.default;
+	const detailPoints = Array.isArray(alert.detail_points) ? alert.detail_points : [];
+	const requirements = Array.isArray(alert.requirements) ? alert.requirements : [];
+	const applicationSteps = Array.isArray(alert.application_steps) ? alert.application_steps : [];
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+			className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm"
 			onClick={onClose}
 		>
 			<div
-				className="cc-fade-in w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl sm:p-8"
+				className="cc-fade-in mx-auto my-4 w-full max-w-3xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:my-8 sm:max-h-[calc(100vh-4rem)] sm:p-8"
 				onClick={(event) => event.stopPropagation()}
 			>
 				<div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
@@ -78,6 +87,50 @@ function AlertDetailsModal({ isOpen, alert, onClose }) {
 					</div>
 				) : null}
 
+				{detailPoints.length > 0 ? (
+					<div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+						<p className="text-xs font-bold uppercase tracking-widest text-slate-700">Opportunity Snapshot</p>
+						<ul className="mt-2 space-y-2 text-sm text-slate-700">
+							{detailPoints.map((point) => (
+								<li key={point} className="flex items-start gap-2">
+									<span className="mt-1 text-indigo-600">•</span>
+									<span>{point}</span>
+								</li>
+							))}
+						</ul>
+					</div>
+				) : null}
+
+				{requirements.length > 0 ? (
+					<div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+						<p className="text-xs font-bold uppercase tracking-widest text-amber-700">Eligibility Checklist</p>
+						<ul className="mt-2 space-y-2 text-sm text-slate-700">
+							{requirements.map((requirement) => (
+								<li key={requirement} className="flex items-start gap-2">
+									<span className="mt-1 text-amber-700">✓</span>
+									<span>{requirement}</span>
+								</li>
+							))}
+						</ul>
+					</div>
+				) : null}
+
+				{applicationSteps.length > 0 ? (
+					<div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+						<p className="text-xs font-bold uppercase tracking-widest text-emerald-700">How To Apply</p>
+						<ol className="mt-2 space-y-2 text-sm text-slate-700">
+							{applicationSteps.map((step, index) => (
+								<li key={`${index}-${step}`} className="flex items-start gap-2">
+									<span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">
+										{index + 1}
+									</span>
+									<span>{step}</span>
+								</li>
+							))}
+						</ol>
+					</div>
+				) : null}
+
 				{Array.isArray(alert.tags) && alert.tags.length > 0 ? (
 					<div className="mt-6 flex flex-wrap gap-2">
 						{alert.tags.map((tag) => (
@@ -89,7 +142,7 @@ function AlertDetailsModal({ isOpen, alert, onClose }) {
 				) : null}
 
 				<div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-					<p className="text-xs text-slate-500">Open the official website to check full eligibility and apply.</p>
+					<p className="text-xs text-slate-500">{alert.official_note || "Open the official website to check full eligibility and apply."}</p>
 					<div className="flex flex-wrap gap-3">
 						<a
 							href={alert.link || "#"}

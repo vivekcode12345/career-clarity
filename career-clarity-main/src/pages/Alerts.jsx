@@ -15,6 +15,7 @@ const typeConfig = {
 
 function Alerts() {
 	const [alerts, setAlerts] = useState([]);
+	const [recommended, setRecommended] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [errorMessage, setErrorMessage] = useState("");
 	const [currentPage, setCurrentPage] = useState(1);
@@ -27,6 +28,7 @@ function Alerts() {
 
 			try {
 				const data = await getAlerts();
+				setRecommended(data.recommended || []);
 				setAlerts(data.alerts || []);
 				setCurrentPage(1);
 			} catch {
@@ -82,6 +84,22 @@ function Alerts() {
 				</div>
 			) : alerts.length > 0 ? (
 				<div>
+					{recommended.length > 0 && (
+						<div className="cc-fade-in mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" style={{ animationDelay: "140ms" }}>
+							<h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Top Recommended</h3>
+							<div className="mt-3 space-y-3">
+								{recommended.slice(0, 5).map((item, idx) => (
+									<div key={item.id || idx} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+										<p className="text-sm font-semibold text-slate-900 line-clamp-1">{item.title || "Recommended opportunity"}</p>
+										<p className="mt-1 text-xs italic text-slate-600 line-clamp-2">
+											⭐ Recommended because: {item.reason || "This opportunity is suitable based on your profile."}
+										</p>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+
 					<h2 className="cc-fade-in mb-6 text-2xl font-extrabold text-slate-900" style={{ animationDelay: "150ms" }}>
 						({alerts.length}) alerts for you
 					</h2>
@@ -146,26 +164,50 @@ function Alerts() {
 							);
 						})}
 					</div>
-					<div className="cc-fade-in mt-8 flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" style={{ animationDelay: "300ms" }}>
-						<button
-							type="button"
-							disabled={safePage <= 1}
-							onClick={() => goToPage(safePage - 1)}
-							className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-100"
-						>
-							← Previous
-						</button>
-						<p className="text-sm text-slate-600">
-							Page <span className="font-semibold text-slate-900">{safePage}</span> of <span className="font-semibold text-slate-900">{totalPages}</span>
-						</p>
-						<button
-							type="button"
-							disabled={safePage >= totalPages}
-							onClick={() => goToPage(safePage + 1)}
-							className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 hover:from-indigo-700 hover:to-purple-700"
-						>
-							Next →
-						</button>
+					<div className="cc-fade-in mt-8 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ animationDelay: "300ms" }}>
+						{/* Previous / Next Controls */}
+						<div className="flex items-center justify-between gap-4">
+							<button
+								type="button"
+								disabled={safePage <= 1}
+								onClick={() => goToPage(safePage - 1)}
+								className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-100"
+							>
+								← Previous
+							</button>
+							<p className="text-sm text-slate-600">
+								Page <span className="font-semibold text-slate-900">{safePage}</span> of <span className="font-semibold text-slate-900">{totalPages}</span>
+							</p>
+							<button
+								type="button"
+								disabled={safePage >= totalPages}
+								onClick={() => goToPage(safePage + 1)}
+								className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 hover:from-indigo-700 hover:to-purple-700"
+							>
+								Next →
+							</button>
+						</div>
+
+						{/* Numbered Page Navigation */}
+						{totalPages > 1 && (
+							<div className="flex flex-wrap items-center justify-center gap-2">
+								<span className="text-xs font-semibold text-slate-600">Go to page:</span>
+								{Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+									<button
+										key={pageNumber}
+										type="button"
+										onClick={() => goToPage(pageNumber)}
+										className={`h-9 w-9 rounded-lg text-sm font-semibold transition ${
+											pageNumber === safePage
+												? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md"
+												: "border border-slate-300 text-slate-700 hover:bg-slate-100"
+										}`}
+									>
+										{pageNumber}
+									</button>
+								))}
+							</div>
+						)}
 					</div>
 				</div>
 			) : (

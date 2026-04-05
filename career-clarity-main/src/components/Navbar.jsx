@@ -39,9 +39,9 @@ function Navbar() {
 	return (
 		<header className="sticky top-0 z-40 border-b border-indigo-100/50 bg-white/40 backdrop-blur-2xl">
 			<nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-				<div className="flex items-center gap-2">
+				<NavLink to={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
 					<img src={logoFull} alt="CareerClarity" className="h-10 w-auto drop-shadow-sm transition hover:scale-105" />
-				</div>
+				</NavLink>
 
 				<ul className="hidden items-center gap-2 md:flex">
 					{navLinks.map((link, index) => (

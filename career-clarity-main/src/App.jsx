@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -19,15 +19,36 @@ import Chatbot from "./components/Chatbot";
 import { isAuthenticated, isGraduateUser, syncCurrentUser } from "./services/authService";
 
 function AppLayout({ children }) {
+  const location = useLocation();
+  const [isFullscreenActive, setIsFullscreenActive] = useState(Boolean(document.fullscreenElement));
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreenActive(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const isTestRoute = location.pathname === "/quick-test" || location.pathname === "/test";
+	const shouldHideChrome = isTestRoute;
+
   return (
-		<div className="relative min-h-screen overflow-hidden text-slate-800">
+		<div className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-800">
 			<div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-indigo-300/30 blur-3xl" />
 			<div className="pointer-events-none absolute -right-20 top-40 h-64 w-64 rounded-full bg-sky-300/25 blur-3xl" />
 			<div className="pointer-events-none absolute bottom-16 left-1/3 h-52 w-52 rounded-full bg-fuchsia-200/20 blur-3xl" />
-      <Navbar />
-			<main className="relative z-10 mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">{children}</main>
-      <Footer />
-			<Chatbot />
+			{!shouldHideChrome ? <Navbar /> : null}
+			<main
+				className={`relative z-10 mx-auto w-full ${
+					shouldHideChrome ? "max-w-none px-0 py-0" : "max-w-7xl px-4 py-10 sm:px-6 lg:px-8"
+				}`}
+			>
+				{children}
+			</main>
+			{!shouldHideChrome ? <Footer /> : null}
+			{!shouldHideChrome ? <Chatbot /> : null}
     </div>
   );
 }
