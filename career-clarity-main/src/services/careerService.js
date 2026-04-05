@@ -256,11 +256,15 @@ export async function submitQuickTestAnswers(payload) {
 	return getApiData(response);
 }
 
-export async function getCareerRecommendations() {
+export async function getCareerRecommendations(options = {}) {
+	const { useFallback = true } = options;
 	try {
 		const response = await api.get("/predict/");
 		return getApiData(response);
 	} catch {
+		if (!useFallback) {
+			throw new Error("Unable to load recommendations");
+		}
 		const currentUser = getCurrentUser() || {};
 		return { recommendations: buildPersonalizedFallbackRecommendations(currentUser) };
 	}
@@ -276,7 +280,8 @@ export async function getCareerRoadmap(career) {
 	}
 }
 
-export async function getAlerts(params = { page: 1, page_size: 10 }) {
+export async function getAlerts(params = { page: 1, page_size: 10 }, options = {}) {
+	const { useFallback = true } = options;
 	try {
 		const response = await api.get("/alerts/", { params });
 		const data = getApiData(response);
@@ -285,6 +290,9 @@ export async function getAlerts(params = { page: 1, page_size: 10 }) {
 			alerts: Array.isArray(data?.results) ? data.results : [],
 		};
 	} catch {
+		if (!useFallback) {
+			throw new Error("Unable to load alerts");
+		}
 		return {
 			results: fallbackAlerts,
 			alerts: fallbackAlerts,
@@ -298,11 +306,15 @@ export async function getAlerts(params = { page: 1, page_size: 10 }) {
 	}
 }
 
-export async function getDashboardSummary() {
+export async function getDashboardSummary(options = {}) {
+	const { useFallback = true } = options;
 	try {
 		const response = await api.get("/dashboard/");
 		return getApiData(response);
 	} catch {
+		if (!useFallback) {
+			throw new Error("Unable to load dashboard summary");
+		}
 		return {
 			top_career: fallbackRecommendations[0]
 				? {

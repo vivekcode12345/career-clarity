@@ -6,11 +6,15 @@ const fallbackColleges = [
 	{ id: 3, name: "Bangalore School of Design", location: "Bangalore", course: "B.Des", fees: "₹3.4L/year" },
 ];
 
-export async function searchColleges(filters) {
+export async function searchColleges(filters, options = {}) {
+	const { useFallback = true } = options;
 	try {
 		const response = await api.get("/colleges/", { params: filters });
 		return getApiData(response);
 	} catch {
+		if (!useFallback) {
+			throw new Error("Unable to load colleges");
+		}
 		const query = (filters?.search || "").toLowerCase();
 		const location = (filters?.location || "").toLowerCase();
 		const course = (filters?.course || "").toLowerCase();

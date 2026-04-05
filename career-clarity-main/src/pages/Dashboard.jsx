@@ -78,13 +78,17 @@ function Dashboard() {
 			profile_completion_percent: 0,
 			quick_test_attempted: false,
 			career_discovered: false,
+			has_profile_data: false,
+			has_interest_data: false,
+			has_skill_data: false,
+			has_personalization_signal: false,
 		},
 	});
 
 	useEffect(() => {
 		const loadDashboardData = async () => {
 			try {
-				const data = await getDashboardSummary();
+				const data = await getDashboardSummary({ useFallback: false });
 				setDashboardSummary({
 					top_career: data?.top_career || null,
 					skill_gap: data?.skill_gap || null,
@@ -94,11 +98,31 @@ function Dashboard() {
 						profile_completion_percent: 0,
 						quick_test_attempted: false,
 						career_discovered: false,
+						has_profile_data: false,
+						has_interest_data: false,
+						has_skill_data: false,
+						has_personalization_signal: false,
 					},
 				});
 				setQuickTestAttempted(Boolean(data?.stats?.quick_test_attempted));
 			} catch {
 				setQuickTestAttempted(false);
+				setDashboardSummary((prev) => ({
+					...prev,
+					top_career: null,
+					skill_gap: null,
+					top_alerts: [],
+					progress: { completed_steps: 0, total_steps: 5, label: "Step 0 of 5 completed" },
+					stats: {
+						profile_completion_percent: 0,
+						quick_test_attempted: false,
+						career_discovered: false,
+						has_profile_data: false,
+						has_interest_data: false,
+						has_skill_data: false,
+						has_personalization_signal: false,
+					},
+				}));
 			}
 		};
 
@@ -118,7 +142,9 @@ function Dashboard() {
 	);
 
 	const profileCompletionPercent = Number(dashboardSummary?.stats?.profile_completion_percent || 0);
-	const hasProfileData = profileCompletionPercent > 0;
+	const hasProfileData = Boolean(dashboardSummary?.stats?.has_profile_data);
+	const hasPersonalizationSignal = Boolean(dashboardSummary?.stats?.has_personalization_signal);
+	const hasSkillData = Boolean(dashboardSummary?.stats?.has_skill_data);
 	const hasRecommendation = Boolean(dashboardSummary?.top_career?.title);
 
 	const visibleStatCards = statCards.map((card) => {
@@ -165,7 +191,7 @@ function Dashboard() {
 				/>
 			)}
 
-			{quickTestAttempted && !hasRecommendation && (
+			{hasPersonalizationSignal && !hasRecommendation && (
 				<EmptyState
 					message="No recommendations available yet. Complete your profile and test."
 					className="cc-fade-in border-rose-200 bg-rose-50 text-rose-700"
@@ -233,15 +259,21 @@ function Dashboard() {
 				<div className="grid gap-4 lg:grid-cols-3">
 					<div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
 						<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">🎯 Top Career Recommendation</p>
-						<p className="mt-2 text-lg font-bold text-slate-900">{dashboardSummary?.top_career?.title || "Not available yet"}</p>
-						<p className="mt-1 text-sm text-slate-600 line-clamp-3">
-							{dashboardSummary?.top_career?.reason || "No recommendations available yet. Complete your profile and test."}
-						</p>
+						{hasRecommendation ? (
+							<>
+								<p className="mt-2 text-lg font-bold text-slate-900">{dashboardSummary?.top_career?.title}</p>
+								<p className="mt-1 text-sm text-slate-600 line-clamp-3">{dashboardSummary?.top_career?.reason}</p>
+							</>
+						) : (
+							<p className="mt-2 text-sm text-slate-600">No top career recommendation available yet.</p>
+						)}
 					</div>
 
 					<div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
 						<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">⚠️ Skill Gap Snapshot</p>
-						{Array.isArray(dashboardSummary?.skill_gap?.missing_skills) && dashboardSummary.skill_gap.missing_skills.length > 0 ? (
+						{!hasSkillData ? (
+							<p className="mt-2 text-sm text-slate-600">No skill data available. Upload CV or take skill test.</p>
+						) : Array.isArray(dashboardSummary?.skill_gap?.missing_skills) && dashboardSummary.skill_gap.missing_skills.length > 0 ? (
 							<ul className="mt-2 space-y-1 text-sm text-slate-700">
 								{dashboardSummary.skill_gap.missing_skills.slice(0, 4).map((skill) => (
 									<li key={skill}>• {skill}</li>
@@ -254,7 +286,7 @@ function Dashboard() {
 
 					<div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
 						<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">🔔 Top Opportunities</p>
-						{dashboardSummary?.top_alerts?.length > 0 ? (
+						{hasPersonalizationSignal && dashboardSummary?.top_alerts?.length > 0 ? (
 							<div className="mt-2 space-y-2 text-sm text-slate-700">
 								{dashboardSummary.top_alerts.slice(0, 3).map((alert) => (
 									<div key={alert.id || `${alert.title}-${alert.type}`} className="rounded-lg bg-slate-50 p-2">
@@ -264,7 +296,7 @@ function Dashboard() {
 								))}
 							</div>
 						) : (
-							<p className="mt-2 text-sm text-slate-600">No current opportunities found for your profile.</p>
+							<p className="mt-2 text-sm text-slate-600">No personalized opportunities found yet. Complete profile and test to unlock them.</p>
 						)}
 					</div>
 				</div>

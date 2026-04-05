@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import Loader from "../components/Loader";
+import EmptyState from "../components/EmptyState";
 import CollegeCard from "../components/CollegeCard";
 import CollegeDetailsModal from "../components/CollegeDetailsModal";
 import { getCollegeDetails, searchColleges } from "../services/collegeService";
+import { getProfile } from "../services/profileService";
+import { hasUploadedCV } from "../services/resumeService";
+import { getQuickTest } from "../services/testService";
 
 function CollegeFinder() {
 	const [filters, setFilters] = useState({ search: "", location: "", course: "", fees: "" });
@@ -15,13 +19,40 @@ function CollegeFinder() {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [detailsError, setDetailsError] = useState("");
+	const [blockedMessage, setBlockedMessage] = useState("");
 
 	const loadColleges = async (activeFilters, requestedPage = 1) => {
 		setIsLoading(true);
 		setErrorMessage("");
+		setBlockedMessage("");
 
 		try {
-			const data = await searchColleges({ ...activeFilters, page: requestedPage, page_size: 15 });
+			const [profileData, quickTestStatus, cvUploaded] = await Promise.all([
+				getProfile(),
+				getQuickTest(),
+				hasUploadedCV().catch(() => false),
+			]);
+
+			const profileSkills = Array.isArray(profileData?.skills) ? profileData.skills : [];
+			const hasSkillSignal = cvUploaded || profileSkills.length > 0;
+			if (!hasSkillSignal) {
+				setBlockedMessage("Upload your CV/marks card or add profile skills before using College Finder");
+				setColleges([]);
+				setRecommendedColleges([]);
+				setPagination({ page: 1, page_size: 15, total_count: 0, total_pages: 1, has_next: false, has_previous: false });
+				return;
+			}
+
+			const quickTestAttempted = Boolean(quickTestStatus?.attempted);
+			if (!quickTestAttempted) {
+				setBlockedMessage("Take the quick test to get interest-based college matches");
+				setColleges([]);
+				setRecommendedColleges([]);
+				setPagination({ page: 1, page_size: 15, total_count: 0, total_pages: 1, has_next: false, has_previous: false });
+				return;
+			}
+
+			const data = await searchColleges({ ...activeFilters, page: requestedPage, page_size: 15 }, { useFallback: false });
 			setColleges(Array.isArray(data.colleges) ? data.colleges : []);
 			setRecommendedColleges(Array.isArray(data.recommended) ? data.recommended : []);
 			setPagination(data.pagination || { page: requestedPage, page_size: 15, total_count: 0, total_pages: 1, has_next: false, has_previous: false });
@@ -74,6 +105,15 @@ function CollegeFinder() {
 			setLoading(false);
 		}
 	};
+
+	if (blockedMessage) {
+		return (
+			<EmptyState
+				message={blockedMessage}
+				className="border-amber-200 bg-amber-50 text-amber-900"
+			/>
+		);
+	}
 
 	return (
 		<div className="space-y-8">
@@ -227,11 +267,10 @@ function CollegeFinder() {
 						</div>
 				</div>
 			) : (
-				<div className="cc-fade-in rounded-2xl border-2 border-amber-200 bg-amber-50 p-8 text-center" style={{ animationDelay: "200ms" }}>
-					<div className="text-4xl mb-3">🔍</div>
-					<p className="text-lg font-semibold text-amber-900">No colleges found</p>
-					<p className="mt-2 text-sm text-amber-800">Try adjusting your filters or search terms</p>
-				</div>
+				<EmptyState
+					message="No colleges found. Try adjusting filters."
+					className="cc-fade-in border-amber-200 bg-amber-50 text-amber-900"
+				/>
 			)}
 
 			<CollegeDetailsModal

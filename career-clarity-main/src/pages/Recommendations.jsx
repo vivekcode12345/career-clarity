@@ -5,6 +5,9 @@ import Loader from "../components/Loader";
 import { getCareerRecommendations } from "../services/careerService";
 import { getCurrentUser } from "../services/authService";
 import { openChatbot } from "../services/chatbotService";
+import { getProfile } from "../services/profileService";
+import { hasUploadedCV } from "../services/resumeService";
+import { getQuickTest } from "../services/testService";
 
 function Recommendations() {
 	const getShortText = (value, max = 110) => {
@@ -23,15 +26,41 @@ function Recommendations() {
 	const [savedRoadmapTitles, setSavedRoadmapTitles] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [errorMessage, setErrorMessage] = useState("");
+	const [blockedMessage, setBlockedMessage] = useState("");
+	const [showCvHint, setShowCvHint] = useState(false);
 	const hasUserSkillData = skills.length > 0 || skillHistory.length > 0 || Boolean(skillTest?.skill);
 
 	useEffect(() => {
 		const loadRecommendations = async () => {
 			setIsLoading(true);
 			setErrorMessage("");
+			setBlockedMessage("");
 
 			try {
-				const data = await getCareerRecommendations();
+				const [profileData, quickTestStatus, cvUploaded] = await Promise.all([
+					getProfile(),
+					getQuickTest(),
+					hasUploadedCV().catch(() => false),
+				]);
+
+				const profileSkills = Array.isArray(profileData?.skills) ? profileData.skills : [];
+				const hasSkillSignal = cvUploaded || profileSkills.length > 0;
+				if (!hasSkillSignal) {
+					setBlockedMessage("Upload your CV/marks card or add profile skills to unlock recommendations");
+					setCareers([]);
+					return;
+				}
+
+				const quickTestAttempted = Boolean(quickTestStatus?.attempted);
+				if (!quickTestAttempted) {
+					setBlockedMessage("Take the quick test to discover your career path");
+					setCareers([]);
+					return;
+				}
+
+				setShowCvHint(!cvUploaded);
+
+				const data = await getCareerRecommendations({ useFallback: false });
 				const rawRecommendations = Array.isArray(data?.recommendations) ? data.recommendations : [];
 				const normalizedCareers = rawRecommendations
 					.map((item) => {
@@ -95,8 +124,24 @@ function Recommendations() {
 		);
 	}
 
+	if (blockedMessage) {
+		return (
+			<EmptyState
+				message={blockedMessage}
+				className="border-amber-200 bg-amber-50 text-amber-900"
+			/>
+		);
+	}
+
 	return (
 		<div className="space-y-8">
+			{showCvHint && (
+				<EmptyState
+					message="Upload your CV to improve skill-based recommendations"
+					className="cc-fade-in border-indigo-200 bg-indigo-50 text-indigo-700"
+				/>
+			)}
+
 			<div className="cc-fade-in rounded-2xl border border-indigo-200 bg-indigo-50 p-5" style={{ animationDelay: "80ms" }}>
 				<p className="text-sm font-semibold text-indigo-700">Advanced Prediction</p>
 					<p className="mt-1 text-slate-700">Take a skill test to unlock deeper and more accurate career options.</p>

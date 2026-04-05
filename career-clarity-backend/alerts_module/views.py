@@ -1,10 +1,11 @@
 from datetime import timedelta
 import hashlib
+import logging
 
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from core.api_response import success_response
+from core.api_response import success_response, error_response
 
 from accounts.models import Profile, UserPreference
 from cv_module.models import CVProfile
@@ -17,6 +18,7 @@ from .utils import _to_tokens, rank_alerts, generate_recommendation_reason
 
 ALERT_CACHE_TTL_HOURS = 12
 CACHE_SCHEMA_VERSION = "v2"
+logger = logging.getLogger(__name__)
 
 
 def _normalize_level(level):
@@ -342,6 +344,7 @@ def _serialize_cached_recommended_with_reason(user, cached_recommended):
 @permission_classes([IsAuthenticated])
 def get_alerts(request):
     user = request.user
+    logger.info("Fetching alerts for user_id=%s", user.id)
 
     profile = Profile.objects.filter(user=user).first()
     raw_level = ""
@@ -350,12 +353,26 @@ def get_alerts(request):
     level = _normalize_level(raw_level)
 
     latest_test = TestResult.objects.filter(user=user).order_by("-created_at").first()
+    if not latest_test:
+        logger.warning("Alerts blocked: quick test missing for user_id=%s", user.id)
+        return error_response("Take the quick test first to unlock personalized alerts.", status_code=400)
+
     profile_interests = _normalize_interest_payload(getattr(profile, "interests", []) if profile else [])
     test_interests = _normalize_interest_payload(latest_test.interest_data if latest_test else {})
     interest = profile_interests + test_interests
 
     cv_profile = CVProfile.objects.filter(user=user).first()
-    skills = cv_profile.skills if cv_profile else []
+    if cv_profile and isinstance(cv_profile.skills, list):
+        skills = cv_profile.skills
+    elif profile and isinstance(getattr(profile, "skills", []), list):
+        skills = profile.skills
+    else:
+        skills = []
+
+    if not [item for item in skills if isinstance(item, str) and item.strip()]:
+        logger.warning("Alerts blocked: no skills signal for user_id=%s", user.id)
+        return error_response("Upload your CV/marks card or add profile skills before viewing alerts.", status_code=400)
+
     preference_map = _get_preference_map(user)
     preference_signature = _preference_signature(preference_map)
 
@@ -396,6 +413,7 @@ def get_alerts(request):
         end = start + page_size
         paged_alerts = cached_alerts[start:end]
         total_pages = (total_count + page_size - 1) // page_size if total_count else 1
+        logger.info("Alerts cache hit for user_id=%s total_count=%s page=%s", user.id, total_count, page)
         return success_response(
             data={
                 "recommended": _serialize_cached_recommended_with_reason(user, cached_recommended),
@@ -414,7 +432,7 @@ def get_alerts(request):
     try:
         run_all_fetchers()
     except Exception:
-        pass
+        logger.warning("Alerts fetchers failed for user_id=%s", user.id, exc_info=True)
 
     eligible_levels = _eligible_levels_for_user(level)
     alerts_queryset = Opportunity.objects.filter(level__in=eligible_levels).order_by("-created_at")
@@ -422,6 +440,7 @@ def get_alerts(request):
     alerts = _filter_opportunities_by_preferences(alerts, preference_map)
 
     if not alerts:
+        logger.warning("No eligible alerts found; using fallback opportunity pool for user_id=%s", user.id)
         fallback = list(Opportunity.objects.all().order_by("-created_at"))
         alerts = _filter_opportunities_by_preferences(fallback, preference_map)
 
@@ -444,6 +463,14 @@ def get_alerts(request):
             "alerts": [_serialize_opportunity(item) for item in all_alerts],
             "total_available": len(all_alerts),
         },
+    )
+
+    logger.info(
+        "Alerts fetched successfully for user_id=%s total_count=%s page=%s page_size=%s",
+        user.id,
+        len(all_alerts),
+        page,
+        page_size,
     )
 
     return success_response(

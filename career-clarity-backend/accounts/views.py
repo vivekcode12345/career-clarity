@@ -6,9 +6,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from datetime import datetime, timezone
+import logging
 from core.api_response import success_response, error_response
 
 from .models import Profile, TokenBlacklist, UserPreference
+
+
+logger = logging.getLogger(__name__)
 
 
 def _serialize_profile(profile):
@@ -33,11 +37,14 @@ def register(request):
     name = (request.data.get("name") or username).strip()
     email = (request.data.get("email") or "").strip()
     education_level = (request.data.get("educationLevel") or "Class 12").strip()
+    logger.info("Registration requested for username=%s", username or "<empty>")
 
     if not username or not password:
+        logger.warning("Registration failed due to missing credentials for username=%s", username or "<empty>")
         return error_response("Username and password are required", status_code=status.HTTP_400_BAD_REQUEST)
 
     if User.objects.filter(username=username).exists():
+        logger.warning("Registration failed because user already exists: username=%s", username)
         return error_response("User already exists", status_code=status.HTTP_400_BAD_REQUEST)
 
     user = User.objects.create_user(username=username, password=password, email=email)
@@ -50,6 +57,7 @@ def register(request):
     )
 
     refresh = RefreshToken.for_user(user)
+    logger.info("Registration successful for user_id=%s username=%s", user.id, user.username)
 
     return success_response(
         data={
@@ -69,10 +77,12 @@ def register(request):
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
+    logger.info("Login requested for username=%s", username or "<empty>")
 
     user = authenticate(username=username, password=password)
 
     if user is None:
+        logger.warning("Login failed for username=%s", username or "<empty>")
         return error_response("Invalid credentials", status_code=status.HTTP_401_UNAUTHORIZED)
 
     profile, _ = Profile.objects.get_or_create(
@@ -85,6 +95,7 @@ def login(request):
     )
 
     refresh = RefreshToken.for_user(user)
+    logger.info("Login successful for user_id=%s username=%s", user.id, user.username)
 
     return success_response(
         data={
@@ -138,9 +149,11 @@ def get_profile(request):
 @permission_classes([IsAuthenticated])
 def logout(request):
     """Logout endpoint - blacklist the refresh token"""
+    logger.info("Logout requested for user_id=%s", request.user.id)
     try:
         refresh_token = request.data.get("refreshToken")
         if not refresh_token:
+            logger.warning("Logout failed due to missing refresh token for user_id=%s", request.user.id)
             return error_response("Refresh token is required", status_code=status.HTTP_400_BAD_REQUEST)
         
         try:
@@ -168,10 +181,13 @@ def logout(request):
                 except TokenError:
                     pass
         except Exception as e:
+            logger.warning("Logout failed due to invalid token for user_id=%s", request.user.id, exc_info=True)
             return error_response(f"Invalid token: {str(e)}", status_code=status.HTTP_400_BAD_REQUEST)
-        
+
+        logger.info("Logout successful for user_id=%s", request.user.id)
         return success_response(message="Successfully logged out", status_code=status.HTTP_200_OK)
     except Exception as e:
+        logger.error("Unexpected logout error for user_id=%s", request.user.id, exc_info=True)
         return error_response(str(e), status_code=status.HTTP_400_BAD_REQUEST)
 
 

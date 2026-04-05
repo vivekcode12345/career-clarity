@@ -3,6 +3,9 @@ import Loader from "../components/Loader";
 import EmptyState from "../components/EmptyState";
 import AlertDetailsModal from "../components/AlertDetailsModal";
 import { getAlerts } from "../services/careerService";
+import { getProfile } from "../services/profileService";
+import { hasUploadedCV } from "../services/resumeService";
+import { getQuickTest } from "../services/testService";
 
 const PAGE_SIZE = 10;
 
@@ -23,14 +26,41 @@ function Alerts() {
 	const [errorMessage, setErrorMessage] = useState("");
 	const [currentPage, setCurrentPage] = useState(1);
 	const [selectedAlert, setSelectedAlert] = useState(null);
+	const [blockedMessage, setBlockedMessage] = useState("");
 
 	useEffect(() => {
 		const loadAlerts = async () => {
 			setIsLoading(true);
 			setErrorMessage("");
+			setBlockedMessage("");
 
 			try {
-				const data = await getAlerts({ page: currentPage, page_size: PAGE_SIZE });
+				const [profileData, quickTestStatus, cvUploaded] = await Promise.all([
+					getProfile(),
+					getQuickTest(),
+					hasUploadedCV().catch(() => false),
+				]);
+
+				const profileSkills = Array.isArray(profileData?.skills) ? profileData.skills : [];
+				const hasSkillSignal = cvUploaded || profileSkills.length > 0;
+				if (!hasSkillSignal) {
+					setBlockedMessage("Upload your CV/marks card or add profile skills to unlock personalized alerts");
+					setAlerts([]);
+					setRecommended([]);
+					setTotalCount(0);
+					return;
+				}
+
+				const quickTestAttempted = Boolean(quickTestStatus?.attempted);
+				if (!quickTestAttempted) {
+					setBlockedMessage("Take the quick test to get interest-based alerts");
+					setAlerts([]);
+					setRecommended([]);
+					setTotalCount(0);
+					return;
+				}
+
+				const data = await getAlerts({ page: currentPage, page_size: PAGE_SIZE }, { useFallback: false });
 				setRecommended(data.recommended || []);
 				setAlerts(data.alerts || []);
 				setTotalCount(Number(data.total_count) || (data.alerts || []).length);
@@ -44,6 +74,15 @@ function Alerts() {
 
 		loadAlerts();
 	}, [currentPage]);
+
+	if (blockedMessage) {
+		return (
+			<EmptyState
+				message={blockedMessage}
+				className="border-amber-200 bg-amber-50 text-amber-900"
+			/>
+		);
+	}
 
 	const safePage = Math.min(currentPage, Math.max(totalPages, 1));
 	const startIndex = (safePage - 1) * PAGE_SIZE;

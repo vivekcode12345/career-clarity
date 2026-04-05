@@ -8,6 +8,10 @@ from test_module.models import TestResult, SkillTestResult
 from .chat_utils import extract_subjects, is_school_student, has_no_cv_intent, extract_high_marks_subjects
 from .chatbot_utils import is_relevant_question, build_prompt, call_ai, format_short_reply
 from core.api_response import success_response, error_response
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
@@ -119,16 +123,20 @@ def update_profile_interests(request):
 @permission_classes([IsAuthenticated])
 def upload_cv(request):
     file = request.FILES.get('cv')
+    logger.info("CV upload requested by user_id=%s", request.user.id)
 
     if not file:
+        logger.warning("CV upload rejected: no file provided for user_id=%s", request.user.id)
         return error_response("No file uploaded", status_code=status.HTTP_400_BAD_REQUEST)
 
     filename = file.name.lower()
     allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png']
     if not any(filename.endswith(ext) for ext in allowed_exts):
+        logger.warning("CV upload rejected: invalid file type for user_id=%s filename=%s", request.user.id, filename)
         return error_response("Only PDF or Image files (.jpg, .jpeg, .png) allowed", status_code=status.HTTP_400_BAD_REQUEST)
 
     if file.size > 10 * 1024 * 1024: # Increased to 10MB for images
+        logger.warning("CV upload rejected: file too large for user_id=%s filename=%s", request.user.id, filename)
         return error_response("File too large (max 10MB)", status_code=status.HTTP_400_BAD_REQUEST)
 
     file.seek(0)
@@ -138,6 +146,7 @@ def upload_cv(request):
         else:
             text = extract_text_from_image(file)
     except Exception as e:
+        logger.error("CV file processing failed for user_id=%s filename=%s", request.user.id, filename, exc_info=True)
         return error_response(f"Failed to process file: {str(e)}", status_code=status.HTTP_400_BAD_REQUEST)
     
     profile, _ = Profile.objects.get_or_create(
@@ -157,7 +166,11 @@ def upload_cv(request):
         effective_skills = strongest_subjects if strongest_subjects else extract_subjects(text)[:3]
     else:
         strongest_subjects = []
-        data = parse_cv(text)
+        try:
+            data = parse_cv(text)
+        except Exception:
+            logger.error("CV parsing failed for user_id=%s filename=%s", request.user.id, filename, exc_info=True)
+            return error_response("Failed to parse CV content", status_code=status.HTTP_400_BAD_REQUEST)
         effective_skills = data.get("skills", [])
 
     if school_student and effective_skills:
@@ -189,7 +202,7 @@ def upload_cv(request):
         CollegeRecommendationCache.objects.filter(user=request.user).delete()
         CollegeDetailsInsightCache.objects.filter(user=request.user).delete()
     except Exception:
-        pass
+        logger.warning("Failed to refresh prediction caches after CV upload for user_id=%s", request.user.id, exc_info=True)
 
     # Skill-test choices/cooldown should follow renewed skills.
     SkillTestResult.objects.filter(user=request.user).delete()
@@ -198,7 +211,15 @@ def upload_cv(request):
     if effective_skills:
         success_message = f"{upload_kind.title()} uploaded successfully. Strongest subjects/skills extracted."
     else:
+        logger.warning("CV upload completed but no skills detected for user_id=%s filename=%s", request.user.id, filename)
         success_message = f"{upload_kind.title()} uploaded successfully, but no clear skills were detected."
+
+    logger.info(
+        "CV upload successful for user_id=%s kind=%s extracted_skills_count=%s",
+        request.user.id,
+        upload_kind,
+        len(effective_skills),
+    )
 
     return success_response(
         data={

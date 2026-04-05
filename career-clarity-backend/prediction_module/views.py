@@ -267,18 +267,52 @@ def _dashboard_alert_type_enabled(alert_type, pref_map):
     return bool(pref_map.get(str(alert_type or "").strip().lower(), True))
 
 
-def _get_dashboard_top_alerts(user, profile):
+def _alert_matches_user_signal(alert_item, signal_tokens):
+    if not signal_tokens:
+        return False
+
+    if isinstance(alert_item, dict):
+        blob = " ".join(
+            [
+                str(alert_item.get("title") or ""),
+                str(alert_item.get("description") or ""),
+                " ".join(alert_item.get("tags") or []) if isinstance(alert_item.get("tags"), list) else "",
+            ]
+        ).lower()
+    else:
+        tags = getattr(alert_item, "tags", [])
+        blob = " ".join(
+            [
+                str(getattr(alert_item, "title", "") or ""),
+                str(getattr(alert_item, "description", "") or ""),
+                " ".join(tags) if isinstance(tags, list) else "",
+            ]
+        ).lower()
+
+    return any(token in blob for token in signal_tokens)
+
+
+def _get_dashboard_top_alerts(user, profile, signal_tokens):
     pref_map = _dashboard_preferences(user)
 
     cache = UserAlertCache.objects.filter(user=user).first()
     if cache and isinstance(cache.alerts, list) and cache.alerts:
         filtered_cached = [
-            item for item in cache.alerts if isinstance(item, dict) and _dashboard_alert_type_enabled(item.get("type"), pref_map)
+            item
+            for item in cache.alerts
+            if isinstance(item, dict)
+            and _dashboard_alert_type_enabled(item.get("type"), pref_map)
+            and _alert_matches_user_signal(item, signal_tokens)
         ]
         return [_serialize_dashboard_alert(item) for item in filtered_cached[:3]]
 
     user_level = _normalize_alert_level(getattr(profile, "education_level", "") if profile else "12")
-    queryset = [item for item in _dashboard_alert_queryset(user_level) if _dashboard_alert_type_enabled(getattr(item, "type", ""), pref_map)]
+    queryset = [
+        item
+        for item in _dashboard_alert_queryset(user_level)
+        if _dashboard_alert_type_enabled(getattr(item, "type", ""), pref_map)
+        and _alert_matches_user_signal(item, signal_tokens)
+    ]
     return [_serialize_dashboard_alert(item) for item in queryset[:3]]
 
 
@@ -312,25 +346,29 @@ def get_dashboard_summary(request):
 
     quick_test_attempted = TestResult.objects.filter(user=user).exists()
     cache = UserRecommendationCache.objects.filter(user=user).first()
-
-    top_career = _build_top_career_from_cache(cache)
-    if not top_career:
-        latest_saved = SavedRoadmap.objects.filter(user=user).order_by("-updated_at").first()
-        if latest_saved:
-            top_career = {
-                "title": latest_saved.career_title,
-                "reason": "Based on your saved roadmap and ongoing career journey.",
-            }
-
-    skill_gap = None
-    if top_career:
-        skill_gap = get_skill_gap(user, top_career)
-
-    top_alerts = _get_dashboard_top_alerts(user, profile)
     profile_completion = _profile_completion_percent(user, profile, cv_profile)
 
+    profile_interests = getattr(profile, "interests", []) if profile and isinstance(getattr(profile, "interests", []), list) else []
+    cv_skills = cv_profile.skills if cv_profile and isinstance(cv_profile.skills, list) else []
+    profile_skills = getattr(profile, "skills", []) if profile and isinstance(getattr(profile, "skills", []), list) else []
+    merged_skills = list(dict.fromkeys([item for item in (cv_skills + profile_skills) if isinstance(item, str) and item.strip()]))
+    signal_tokens = [str(item).strip().lower() for item in (profile_interests + merged_skills) if str(item).strip()]
+
+    has_profile_data = profile_completion >= 50
+    has_interest_data = len(profile_interests) > 0
+    has_skill_data = len(merged_skills) > 0
+    has_personalization_signal = bool(quick_test_attempted and (has_interest_data or has_skill_data))
+
+    top_career = _build_top_career_from_cache(cache) if has_personalization_signal else None
+
+    skill_gap = None
+    if top_career and has_skill_data:
+        skill_gap = get_skill_gap(user, top_career)
+
+    top_alerts = _get_dashboard_top_alerts(user, profile, signal_tokens) if has_personalization_signal else []
+
     completed_steps = 0
-    completed_steps += 1 if profile_completion >= 60 else 0
+    completed_steps += 1 if has_profile_data else 0
     completed_steps += 1 if quick_test_attempted else 0
     completed_steps += 1 if bool(top_career) else 0
     completed_steps += 1 if bool(top_alerts) else 0
@@ -350,6 +388,10 @@ def get_dashboard_summary(request):
                 "profile_completion_percent": profile_completion,
                 "quick_test_attempted": quick_test_attempted,
                 "career_discovered": bool(top_career),
+                "has_profile_data": has_profile_data,
+                "has_interest_data": has_interest_data,
+                "has_skill_data": has_skill_data,
+                "has_personalization_signal": has_personalization_signal,
             },
         }
     )
@@ -360,9 +402,14 @@ def get_dashboard_summary(request):
 def predict(request):
     user = request.user
     profile = Profile.objects.filter(user=user).first()
+    logger.info("Recommendation prediction requested by user_id=%s", user.id)
 
     # Get latest test result
     test = TestResult.objects.filter(user=user).order_by('-created_at').first()
+    if not test:
+        logger.warning("Prediction blocked: quick test missing for user_id=%s", user.id)
+        return error_response("Take the quick test first to unlock recommendations.", status_code=400)
+
     skill_tests = list(SkillTestResult.objects.filter(user=user).order_by('-created_at'))
     latest_skill_test = skill_tests[0] if skill_tests else None
 
@@ -409,6 +456,13 @@ def predict(request):
     except CVProfile.DoesNotExist:
         skills = profile.skills if profile and isinstance(profile.skills, list) else []
 
+    if not isinstance(skills, list):
+        skills = []
+
+    if not [item for item in skills if isinstance(item, str) and item.strip()]:
+        logger.warning("Prediction blocked: no skills signal for user_id=%s", user.id)
+        return error_response("Upload your CV/marks card or add profile skills before viewing recommendations.", status_code=400)
+
     # Recommendations with caching
     cache = UserRecommendationCache.objects.filter(user=user).first()
     
@@ -426,18 +480,24 @@ def predict(request):
     )
     
     if cache_valid:
+        logger.info("Prediction cache hit for user_id=%s", user.id)
         recommendations = cache.recommendations
     else:
         # Generate new recommendations using AI
-        recommendations = generate_ai_recommendations(
-            ability=ability,
-            interest=interest,
-            skills=skills,
-            skill_name=skill_name,
-            skill_level=skill_level,
-            skill_score=skill_score or 0,
-            skill_history=skill_history,
-        )
+        logger.info("Prediction cache miss; generating recommendations for user_id=%s", user.id)
+        try:
+            recommendations = generate_ai_recommendations(
+                ability=ability,
+                interest=interest,
+                skills=skills,
+                skill_name=skill_name,
+                skill_level=skill_level,
+                skill_score=skill_score or 0,
+                skill_history=skill_history,
+            )
+        except Exception:
+            logger.error("Recommendation generation failed for user_id=%s", user.id, exc_info=True)
+            return error_response("Recommendation generation failed. Please try again.", status_code=500)
         
         # Update or create cache
         UserRecommendationCache.objects.update_or_create(
@@ -475,6 +535,13 @@ def predict(request):
         SavedRoadmap.objects.filter(user=user)
         .values("career_title", "updated_at")
         .order_by("-updated_at")
+    )
+
+    logger.info(
+        "Prediction completed for user_id=%s recommendations=%s skill_history_records=%s",
+        user.id,
+        len(enriched_recommendations),
+        len(skill_history),
     )
 
     return success_response(
@@ -577,8 +644,17 @@ def get_colleges(request):
     user = request.user
 
     try:
+        latest_test = TestResult.objects.filter(user=user).order_by("-created_at").first()
+        if not latest_test:
+            return error_response("Take the quick test first to unlock college recommendations.", status_code=400)
+
         _ensure_default_colleges()
         user_profile = _build_college_user_profile(user, request)
+        user_skills = user_profile.get("skills") or []
+        has_skill_signal = any(isinstance(item, str) and item.strip() for item in user_skills)
+        if not has_skill_signal:
+            return error_response("Upload your CV/marks card or add profile skills before using College Finder.", status_code=400)
+
         user_level = user_profile["user_level"]
         eligible_type = _eligible_college_type(user_level)
         search = (request.GET.get("search") or "").strip().lower()
