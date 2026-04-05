@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import Loader from "../components/Loader";
 import EmptyState from "../components/EmptyState";
 import AlertDetailsModal from "../components/AlertDetailsModal";
 import { Skeleton, SkeletonCard } from "../components/Skeleton";
@@ -11,11 +10,11 @@ import { getQuickTest } from "../services/testService";
 const PAGE_SIZE = 10;
 
 const typeConfig = {
-	scholarship: { emoji: "💰", color: "emerald", accent: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-	internship: { emoji: "🧑‍💻", color: "blue", accent: "border-blue-200 bg-blue-50 text-blue-700" },
-	job: { emoji: "💼", color: "indigo", accent: "border-indigo-200 bg-indigo-50 text-indigo-700" },
-	exam: { emoji: "📝", color: "orange", accent: "border-orange-200 bg-orange-50 text-orange-700" },
-	default: { emoji: "📢", color: "slate", accent: "border-slate-200 bg-slate-50 text-slate-700" },
+	scholarship: { emoji: "💰", accent: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+	internship: { emoji: "🧑‍💻", accent: "border-blue-200 bg-blue-50 text-blue-700" },
+	job: { emoji: "💼", accent: "border-indigo-200 bg-indigo-50 text-indigo-700" },
+	exam: { emoji: "📝", accent: "border-orange-200 bg-orange-50 text-orange-700" },
+	default: { emoji: "📢", accent: "border-slate-200 bg-slate-50 text-slate-700" },
 };
 
 function Alerts() {

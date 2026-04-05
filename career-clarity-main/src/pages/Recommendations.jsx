@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import EmptyState from "../components/EmptyState";
-import Loader from "../components/Loader";
 import { Skeleton, SkeletonCard } from "../components/Skeleton";
 import { getCareerRecommendations } from "../services/careerService";
 import { getCurrentUser } from "../services/authService";

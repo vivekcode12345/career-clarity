@@ -146,7 +146,6 @@ function Dashboard() {
 		(card) => !card.onlyGraduate || isGraduate
 	);
 
-	const profileCompletionPercent = Number(dashboardSummary?.stats?.profile_completion_percent || 0);
 	const hasProfileData = Boolean(dashboardSummary?.stats?.has_profile_data);
 	const hasPersonalizationSignal = Boolean(dashboardSummary?.stats?.has_personalization_signal);
 	const hasSkillData = Boolean(dashboardSummary?.stats?.has_skill_data);
