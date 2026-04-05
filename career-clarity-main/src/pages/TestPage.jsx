@@ -302,6 +302,7 @@ const TestPage = () => {
   const checkTestStatus = async () => {
     try {
       setLoading(true);
+      setError("Loading your test setup...");
       const quickTestData = await getQuickTest();
 
       if (quickTestData?.attempted) {
@@ -315,9 +316,10 @@ const TestPage = () => {
       setCurrentQuestion(0);
       setAnswers({});
       setPage("quickTest");
+      setError("");
       startTimer(QUICK_TEST_DURATION_SECONDS);
     } catch (err) {
-      setError("Failed to load test.");
+      setError(err?.response?.data?.message || "Failed to load test setup. Please try again.");
       setPage("error");
     } finally {
       setLoading(false);
@@ -413,6 +415,7 @@ const TestPage = () => {
       setLoading(true);
       setError("");
       setIsPreparingQuestions(true);
+      setError("Generating your skill test questions...");
 
       const entered = await enterFullscreen();
       if (!entered) {
@@ -424,7 +427,7 @@ const TestPage = () => {
       const skillTestData = await getSkillTest(selectedSkill);
       if (!skillTestData?.questions?.length) {
         setIsPreparingQuestions(false);
-        setError(skillTestData?.message || "No questions available for this skill.");
+        setError(skillTestData?.message || "Failed to generate questions for this skill. Please try another skill or retry.");
         setPage("error");
         return;
       }
@@ -433,11 +436,12 @@ const TestPage = () => {
       setCurrentQuestion(0);
       setAnswers({});
       setIsPreparingQuestions(false);
+      setError("");
       setPage("skillTest");
       startTimer(SKILL_TEST_DURATION_SECONDS);
     } catch (err) {
       setIsPreparingQuestions(false);
-      const message = err?.response?.data?.message || "Failed to load skill test questions.";
+      const message = err?.response?.data?.message || "Failed to generate skill test questions. Please retry.";
       setError(message);
       setPage("error");
     } finally {
@@ -514,7 +518,7 @@ const TestPage = () => {
         err?.response?.data?.message ||
         err?.response?.data?.error ||
         err?.response?.data?.detail ||
-        "Failed to submit test.";
+        "Failed to submit test. Your answers are safe; please try submitting again.";
       setError(message);
       setPage("error");
     } finally {

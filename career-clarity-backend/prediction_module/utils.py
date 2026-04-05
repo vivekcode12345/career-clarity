@@ -1,6 +1,7 @@
 import requests
 import json
 import hashlib
+import re
 from django.conf import settings
 import logging
 
@@ -355,15 +356,39 @@ def _add_unique(careers, item):
         careers.append(item)
 
 
-def _career_score(career, skill_name, skill_level, ability):
+def _career_score(career, skill_name, skill_level, ability, user_skills=None, preferred_titles=None):
     score = 0
     title = _normalize_text(career.get("title"))
     description = _normalize_text(career.get("description"))
     roadmap_focus = _normalize_text(career.get("roadmapFocus"))
     required_skills = {_normalize_text(item) for item in career.get("requiredSkills", [])}
+    required_tokens = {
+        token
+        for item in required_skills
+        for token in item.split()
+        if token
+    }
+    user_skills_norm = {_normalize_text(item) for item in (user_skills or []) if _normalize_text(item)}
+    user_tokens = {
+        token
+        for item in user_skills_norm
+        for token in item.split()
+        if token
+    }
 
     skill_name = _normalize_text(skill_name)
     skill_keywords = set(skill_name.split()) if skill_name else set()
+
+    if preferred_titles and title in preferred_titles:
+        score += 22
+
+    overlap_skills = len(required_skills.intersection(user_skills_norm))
+    if overlap_skills:
+        score += overlap_skills * 18
+
+    overlap_keywords = len(required_tokens.intersection(user_tokens))
+    if overlap_keywords:
+        score += min(overlap_keywords * 6, 24)
 
     if skill_name and (
         skill_name in required_skills
@@ -399,6 +424,11 @@ def get_recommendations(interest, skills, ability, skill_level=None, skill_name=
     skills_lower = {str(skill).strip().lower() for skill in (skills or []) if skill}
 
     careers = [dict(option) for option in CAREER_OPTIONS.get(interest_key, CAREER_OPTIONS["general"])]
+    preferred_titles = {
+        _normalize_text(option.get("title"))
+        for option in CAREER_OPTIONS.get(interest_key, [])
+        if isinstance(option, dict)
+    }
 
     if "python" in skills_lower and interest_key != "tech":
         _add_unique(
@@ -441,13 +471,77 @@ def get_recommendations(interest, skills, ability, skill_level=None, skill_name=
             career["description"] = f"Beginner-friendly path: {career['description']}"
             career["roadmapFocus"] = f"foundation learning, projects, guidance, {career['roadmapFocus']}"
 
-    ranked = sorted(
-        careers,
-        key=lambda career: _career_score(career, skill_name, skill_level, ability),
-        reverse=True,
+    user_signature = "|".join(
+        [
+            interest_key,
+            ability or "",
+            _normalize_text(skill_name),
+            ",".join(sorted(skills_lower)),
+        ]
     )
 
+    def _rank_key(career):
+        title = _normalize_text(career.get("title"))
+        base_score = _career_score(
+            career,
+            skill_name,
+            skill_level,
+            ability,
+            user_skills=skills_lower,
+            preferred_titles=preferred_titles,
+        )
+        tie_breaker = int(
+            hashlib.sha256(f"{user_signature}|{title}".encode("utf-8")).hexdigest()[:8],
+            16,
+        )
+        return (base_score, tie_breaker)
+
+    ranked = sorted(careers, key=_rank_key, reverse=True)
+
     return ranked
+
+
+def estimate_career_timeline(career_data, user_skills=None, ability="medium", skill_level=""):
+    user_skill_set = {_normalize_text(item) for item in (user_skills or []) if _normalize_text(item)}
+    required = [_normalize_text(item) for item in (career_data or {}).get("requiredSkills", []) if _normalize_text(item)]
+
+    if required:
+        missing_count = len([item for item in required if item not in user_skill_set])
+    else:
+        missing_count = 2
+
+    ability_factor = {
+        "high": -1,
+        "medium": 0,
+        "low": 2,
+    }.get(_normalize_text(ability), 0)
+
+    level_factor = {
+        "advanced": -1,
+        "intermediate": 0,
+        "beginner": 1,
+    }.get(_normalize_text(skill_level), 0)
+
+    score = max(1, missing_count + ability_factor + level_factor)
+
+    if score <= 1:
+        duration = "3-5 months"
+        stage = "Fast-track"
+    elif score <= 3:
+        duration = "6-9 months"
+        stage = "Core-track"
+    elif score <= 5:
+        duration = "10-14 months"
+        stage = "Growth-track"
+    else:
+        duration = "15-20 months"
+        stage = "Foundation-track"
+
+    return {
+        "duration": duration,
+        "stage": stage,
+        "missing_skills_count": missing_count,
+    }
 
 
 LEVEL_TYPE_MAP = {
@@ -776,3 +870,150 @@ def build_college_filter_signature(user_level, ability, interest, skills, locati
         "search": search or "",
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
+def _normalize_skill_items(values):
+    if not values:
+        return []
+
+    if isinstance(values, str):
+        values = [values]
+    elif not isinstance(values, (list, tuple, set)):
+        return []
+
+    cleaned = []
+    seen = set()
+    for item in values:
+        text = str(item or "").strip().lower()
+        if not text:
+            continue
+        if text in seen:
+            continue
+        seen.add(text)
+        cleaned.append(text)
+    return cleaned
+
+
+def _extract_keyword_skills(text):
+    content = str(text or "").lower()
+    if not content:
+        return []
+
+    raw_tokens = re.findall(r"[a-zA-Z][a-zA-Z0-9+#.\-/]*", content)
+    stop_words = {
+        "and", "the", "for", "with", "from", "into", "your", "this", "that", "you", "are",
+        "about", "will", "have", "has", "had", "been", "being", "their", "them", "they", "our",
+        "should", "must", "also", "more", "less", "than", "then", "step", "steps", "course", "career",
+        "focus", "roadmap", "learn", "learning", "build", "based", "level", "high", "medium", "low",
+        "next", "title", "description", "resource", "resources", "project", "projects", "skill", "skills",
+    }
+
+    keywords = []
+    seen = set()
+    for token in raw_tokens:
+        token = token.strip("-./")
+        if len(token) < 3 or token in stop_words or token.isdigit():
+            continue
+        if token in seen:
+            continue
+        seen.add(token)
+        keywords.append(token)
+    return keywords
+
+
+def _extract_required_skills_from_roadmap(roadmap_data):
+    if not isinstance(roadmap_data, dict):
+        return []
+
+    extracted = []
+    extracted.extend(_normalize_skill_items(roadmap_data.get("skillRoadmap", [])))
+
+    steps = roadmap_data.get("steps", [])
+    if isinstance(steps, list):
+        for step in steps:
+            if not isinstance(step, dict):
+                continue
+            extracted.extend(_extract_keyword_skills(step.get("title", "")))
+            extracted.extend(_extract_keyword_skills(step.get("description", "")))
+
+    exams = roadmap_data.get("exams", [])
+    certifications = roadmap_data.get("certifications", [])
+    extracted.extend(_normalize_skill_items(exams))
+    extracted.extend(_normalize_skill_items(certifications))
+
+    return _normalize_skill_items(extracted)
+
+
+def _extract_required_skills_from_career_data(career_data):
+    if not isinstance(career_data, dict):
+        return []
+
+    direct_skills = career_data.get("requiredSkills") or career_data.get("skills") or []
+    extracted = _normalize_skill_items(direct_skills)
+    if extracted:
+        return extracted
+
+    tag_values = career_data.get("tags") or []
+    extracted.extend(_normalize_skill_items(tag_values))
+
+    keyword_fields = [
+        career_data.get("title", ""),
+        career_data.get("name", ""),
+        career_data.get("career", ""),
+        career_data.get("description", ""),
+        career_data.get("roadmapFocus", ""),
+        career_data.get("reason", ""),
+    ]
+    for value in keyword_fields:
+        extracted.extend(_extract_keyword_skills(value))
+
+    return _normalize_skill_items(extracted)
+
+
+def get_skill_gap(user, career_data):
+    from accounts.models import Profile
+    from cv_module.models import CVProfile
+    from .models import SavedRoadmap
+
+    profile = Profile.objects.filter(user=user).first()
+    cv_profile = CVProfile.objects.filter(user=user).first()
+
+    user_skills = []
+    if cv_profile and isinstance(cv_profile.skills, list):
+        user_skills = cv_profile.skills
+    elif profile and isinstance(profile.skills, list):
+        user_skills = profile.skills
+
+    normalized_user_skills = _normalize_skill_items(user_skills)
+
+    career_title = ""
+    if isinstance(career_data, dict):
+        career_title = str(
+            career_data.get("title")
+            or career_data.get("name")
+            or career_data.get("career")
+            or ""
+        ).strip()
+
+    required_skills = []
+
+    if career_title:
+        saved_roadmap = SavedRoadmap.objects.filter(user=user, career_title=career_title).first()
+        if saved_roadmap and isinstance(saved_roadmap.roadmap_data, dict):
+            required_skills = _extract_required_skills_from_roadmap(saved_roadmap.roadmap_data)
+
+    if not required_skills:
+        required_skills = _extract_required_skills_from_career_data(career_data)
+
+    normalized_required_skills = _normalize_skill_items(required_skills)
+    if not normalized_required_skills:
+        return None
+
+    user_skill_set = set(normalized_user_skills)
+    have_skills = [skill for skill in normalized_required_skills if skill in user_skill_set]
+    missing_skills = [skill for skill in normalized_required_skills if skill not in user_skill_set]
+
+    return {
+        "have_skills": have_skills,
+        "missing_skills": missing_skills,
+    }

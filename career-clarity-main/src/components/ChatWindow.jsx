@@ -82,6 +82,21 @@ function ChatWindow({ isOpen, onClose, userIdentity, initialMessage, onInitialMe
     }
 
     initialNoticeShownRef.current = true;
+
+    if (initialMessage === "__UPLOAD_CV__") {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "bot",
+          text: "Please upload your renewed CV now. After upload, your profile skills, recommendations, and skill-test flow will refresh with the latest skills.",
+          actions: [{ label: "Upload CV", type: "upload" }, { label: "Close Chat", type: "close" }],
+        },
+      ]);
+      onInitialMessageSent?.();
+      return;
+    }
+
     setMessages((prev) => [
       ...prev,
       {

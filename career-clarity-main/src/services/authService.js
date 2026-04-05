@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { getApiData } from "./api";
 
 export const EDUCATION_LEVELS = ["Class 10", "Class 12", "Undergraduate", "Graduate"];
 
@@ -8,7 +8,7 @@ export async function registerUser(payload) {
 		username: payload?.username || payload?.email || payload?.name,
 	};
 	const response = await api.post("/auth/register/", normalizedPayload);
-	return response.data;
+	return getApiData(response);
 }
 
 export async function loginUser(payload) {
@@ -17,7 +17,7 @@ export async function loginUser(payload) {
 		username: payload?.username || payload?.email || payload?.identifier,
 	};
 	const response = await api.post("/auth/login/", normalizedPayload);
-	return response.data;
+	return getApiData(response);
 }
 
 export function saveAuthSession(data) {
@@ -60,11 +60,12 @@ export function isGraduateUser() {
 
 export async function updateUserProfile(payload) {
 	const response = await api.put("/auth/profile/", payload);
-	if (response.data?.user) {
+	const responseData = getApiData(response);
+	if (responseData?.user) {
 		const existing = getCurrentUser() || {};
-		localStorage.setItem("currentUser", JSON.stringify({ ...existing, ...response.data.user }));
+		localStorage.setItem("currentUser", JSON.stringify({ ...existing, ...responseData.user }));
 	}
-	return response.data;
+	return responseData;
 }
 
 export async function logoutUser() {
@@ -81,7 +82,7 @@ export async function logoutUser() {
 
 export async function getMyProfile() {
 	const response = await api.get("/auth/profile/");
-	return response.data;
+	return getApiData(response);
 }
 
 export async function syncCurrentUser() {

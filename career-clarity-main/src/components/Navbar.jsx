@@ -12,6 +12,7 @@ const guestNavLinks = [
 const authNavLinks = [
 	{ label: "Dashboard", to: "/dashboard" },
 	{ label: "Profile", to: "/profile" },
+	{ label: "⚙️ Settings", to: "/settings" },
 ];
 
 function Navbar() {

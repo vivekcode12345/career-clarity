@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Loader from "../components/Loader";
+import EmptyState from "../components/EmptyState";
 import AlertDetailsModal from "../components/AlertDetailsModal";
 import { getAlerts } from "../services/careerService";
 
@@ -16,6 +17,8 @@ const typeConfig = {
 function Alerts() {
 	const [alerts, setAlerts] = useState([]);
 	const [recommended, setRecommended] = useState([]);
+	const [totalCount, setTotalCount] = useState(0);
+	const [totalPages, setTotalPages] = useState(1);
 	const [isLoading, setIsLoading] = useState(true);
 	const [errorMessage, setErrorMessage] = useState("");
 	const [currentPage, setCurrentPage] = useState(1);
@@ -27,10 +30,11 @@ function Alerts() {
 			setErrorMessage("");
 
 			try {
-				const data = await getAlerts();
+				const data = await getAlerts({ page: currentPage, page_size: PAGE_SIZE });
 				setRecommended(data.recommended || []);
 				setAlerts(data.alerts || []);
-				setCurrentPage(1);
+				setTotalCount(Number(data.total_count) || (data.alerts || []).length);
+				setTotalPages(Number(data.total_pages) || 1);
 			} catch {
 				setErrorMessage("Unable to fetch alerts right now.");
 			} finally {
@@ -39,12 +43,11 @@ function Alerts() {
 		};
 
 		loadAlerts();
-	}, []);
+	}, [currentPage]);
 
-	const totalPages = Math.max(1, Math.ceil(alerts.length / PAGE_SIZE));
-	const safePage = Math.min(currentPage, totalPages);
+	const safePage = Math.min(currentPage, Math.max(totalPages, 1));
 	const startIndex = (safePage - 1) * PAGE_SIZE;
-	const currentAlerts = alerts.slice(startIndex, startIndex + PAGE_SIZE);
+	const currentAlerts = alerts;
 
 	const goToPage = (page) => {
 		const nextPage = Math.min(Math.max(page, 1), totalPages);
@@ -82,9 +85,9 @@ function Alerts() {
 				<div className="cc-fade-in flex h-64 items-center justify-center rounded-2xl bg-white shadow-lg">
 					<Loader label="Loading alerts..." />
 				</div>
-			) : alerts.length > 0 ? (
+			) : totalCount > 0 ? (
 				<div>
-					{recommended.length > 0 && (
+					{recommended.length > 0 ? (
 						<div className="cc-fade-in mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" style={{ animationDelay: "140ms" }}>
 							<h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Top Recommended</h3>
 							<div className="mt-3 space-y-3">
@@ -98,14 +101,19 @@ function Alerts() {
 								))}
 							</div>
 						</div>
+					) : (
+						<EmptyState
+							message="No personalized alerts yet"
+							className="cc-fade-in mb-6 border-blue-200 bg-blue-50 text-blue-700"
+						/>
 					)}
 
 					<h2 className="cc-fade-in mb-6 text-2xl font-extrabold text-slate-900" style={{ animationDelay: "150ms" }}>
-						({alerts.length}) alerts for you
+						({totalCount}) alerts for you
 					</h2>
 					<div className="cc-fade-in mb-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between" style={{ animationDelay: "175ms" }}>
 						<p className="text-sm text-slate-600">
-							Showing <span className="font-semibold text-slate-900">{startIndex + 1}</span> to <span className="font-semibold text-slate-900">{Math.min(startIndex + PAGE_SIZE, alerts.length)}</span> of <span className="font-semibold text-slate-900">{alerts.length}</span>
+							Showing <span className="font-semibold text-slate-900">{totalCount === 0 ? 0 : startIndex + 1}</span> to <span className="font-semibold text-slate-900">{Math.min(startIndex + currentAlerts.length, totalCount)}</span> of <span className="font-semibold text-slate-900">{totalCount}</span>
 						</p>
 						<p className="text-sm text-slate-600">
 							Page <span className="font-semibold text-slate-900">{safePage}</span> of <span className="font-semibold text-slate-900">{totalPages}</span>
@@ -211,15 +219,14 @@ function Alerts() {
 					</div>
 				</div>
 			) : (
-				<div className="cc-fade-in rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-8 text-center" style={{ animationDelay: "150ms" }}>
-					<div className="text-5xl mb-3">✓</div>
-					<p className="text-lg font-semibold text-emerald-900">You're all caught up!</p>
-					<p className="mt-2 text-sm text-emerald-800">No pending alerts right now. Check back soon for updates.</p>
-				</div>
+				<EmptyState
+					message="No opportunities available right now. Please check later."
+					className="cc-fade-in border-emerald-200 bg-emerald-50 text-emerald-900"
+				/>
 			)}
 
 			{/* Tips Section */}
-			{alerts.length > 0 && (
+			{totalCount > 0 && (
 				<div className="cc-fade-in rounded-2xl bg-white p-8 shadow-lg" style={{ animationDelay: "400ms" }}>
 					<h3 className="mb-4 text-lg font-bold text-slate-900">💡 Pro Tips:</h3>
 					<div className="space-y-3">

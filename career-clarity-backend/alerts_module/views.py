@@ -4,9 +4,9 @@ import hashlib
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
+from core.api_response import success_response
 
-from accounts.models import Profile
+from accounts.models import Profile, UserPreference
 from cv_module.models import CVProfile
 from test_module.models import TestResult
 
@@ -208,6 +208,39 @@ def _build_signature(values):
     return "|".join(tokens)
 
 
+def _get_preference_map(user):
+    pref, _ = UserPreference.objects.get_or_create(user=user)
+    return {
+        "internship": bool(pref.internship),
+        "job": bool(pref.job),
+        "scholarship": bool(pref.scholarship),
+        "exam": bool(pref.exam),
+    }
+
+
+def _preference_signature(pref_map):
+    return "|".join([f"{key}:{int(pref_map.get(key, True))}" for key in ["internship", "job", "scholarship", "exam"]])
+
+
+def _is_type_enabled(opportunity_type, pref_map):
+    key = str(opportunity_type or "").strip().lower()
+    return bool(pref_map.get(key, True))
+
+
+def _filter_opportunities_by_preferences(opportunities, pref_map):
+    return [item for item in opportunities if _is_type_enabled(getattr(item, "type", ""), pref_map)]
+
+
+def _filter_serialized_alerts_by_preferences(alerts, pref_map):
+    filtered = []
+    for item in alerts:
+        if not isinstance(item, dict):
+            continue
+        if _is_type_enabled(item.get("type"), pref_map):
+            filtered.append(item)
+    return filtered
+
+
 def _alert_haystack(opportunity):
     tags = opportunity.tags if isinstance(opportunity.tags, list) else []
     return " ".join(
@@ -323,10 +356,23 @@ def get_alerts(request):
 
     cv_profile = CVProfile.objects.filter(user=user).first()
     skills = cv_profile.skills if cv_profile else []
+    preference_map = _get_preference_map(user)
+    preference_signature = _preference_signature(preference_map)
+
+    try:
+        page = max(int(request.query_params.get("page", 1)), 1)
+    except (TypeError, ValueError):
+        page = 1
+
+    try:
+        page_size = int(request.query_params.get("page_size", 10))
+    except (TypeError, ValueError):
+        page_size = 10
+    page_size = min(max(page_size, 1), 50)
 
     interest_signature = _build_signature(interest)
     skill_signature = _build_signature(skills)
-    cache_interest_signature = f"{CACHE_SCHEMA_VERSION}|{interest_signature}"
+    cache_interest_signature = f"{CACHE_SCHEMA_VERSION}|{interest_signature}|prefs:{preference_signature}"
     cache_skill_signature = f"{CACHE_SCHEMA_VERSION}|{skill_signature}"
 
     refresh_requested = request.query_params.get("refresh") == "1"
@@ -343,17 +389,26 @@ def get_alerts(request):
     )
 
     if cache_fresh:
-        cached_alerts = cache.alerts
+        cached_alerts = _filter_serialized_alerts_by_preferences(cache.alerts, preference_map)
         cached_recommended = cached_alerts[:50]
-        return Response(
-            {
+        total_count = cache.total_available or len(cached_alerts)
+        start = (page - 1) * page_size
+        end = start + page_size
+        paged_alerts = cached_alerts[start:end]
+        total_pages = (total_count + page_size - 1) // page_size if total_count else 1
+        return success_response(
+            data={
                 "recommended": _serialize_cached_recommended_with_reason(user, cached_recommended),
-                "alerts": cached_alerts,
-                "total_count": cache.total_available or len(cached_alerts),
+                "results": paged_alerts,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages,
+                "total_count": total_count,
                 "user_level": level,
                 "cached": True,
                 "cache_updated_at": cache.updated_at.isoformat() if cache.updated_at else None,
-            }
+            },
+            message="Alerts loaded from cache",
         )
 
     try:
@@ -364,15 +419,21 @@ def get_alerts(request):
     eligible_levels = _eligible_levels_for_user(level)
     alerts_queryset = Opportunity.objects.filter(level__in=eligible_levels).order_by("-created_at")
     alerts = [item for item in alerts_queryset if _is_opportunity_eligible_for_user(item, level)]
+    alerts = _filter_opportunities_by_preferences(alerts, preference_map)
 
     if not alerts:
-        alerts = list(Opportunity.objects.all().order_by("-created_at"))
+        fallback = list(Opportunity.objects.all().order_by("-created_at"))
+        alerts = _filter_opportunities_by_preferences(fallback, preference_map)
 
     filtered_alerts = _filter_by_interest(alerts, interest, skills)
     ranked_alerts = rank_alerts(filtered_alerts, interest, skills)
 
     recommended = ranked_alerts[:50]
     all_alerts = ranked_alerts
+
+    start = (page - 1) * page_size
+    end = start + page_size
+    paged_alerts = [_serialize_opportunity(item) for item in all_alerts[start:end]]
 
     UserAlertCache.objects.update_or_create(
         user=user,
@@ -385,10 +446,13 @@ def get_alerts(request):
         },
     )
 
-    return Response(
-        {
+    return success_response(
+        data={
             "recommended": [_serialize_recommended_opportunity(user, item) for item in recommended],
-            "alerts": [_serialize_opportunity(item) for item in all_alerts],
+            "results": paged_alerts,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (len(all_alerts) + page_size - 1) // page_size if all_alerts else 1,
             "total_count": len(all_alerts),
             "user_level": level,
             "cached": False,

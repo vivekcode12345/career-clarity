@@ -3,12 +3,12 @@ from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from datetime import datetime, timezone
+from core.api_response import success_response, error_response
 
-from .models import Profile, TokenBlacklist
+from .models import Profile, TokenBlacklist, UserPreference
 
 
 def _serialize_profile(profile):
@@ -35,10 +35,10 @@ def register(request):
     education_level = (request.data.get("educationLevel") or "Class 12").strip()
 
     if not username or not password:
-        return Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+        return error_response("Username and password are required", status_code=status.HTTP_400_BAD_REQUEST)
 
     if User.objects.filter(username=username).exists():
-        return Response({"error": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
+        return error_response("User already exists", status_code=status.HTTP_400_BAD_REQUEST)
 
     user = User.objects.create_user(username=username, password=password, email=email)
 
@@ -51,9 +51,8 @@ def register(request):
 
     refresh = RefreshToken.for_user(user)
 
-    return Response(
-        {
-            "message": "User created successfully",
+    return success_response(
+        data={
             "token": str(refresh.access_token),
             "refreshToken": str(refresh),
             "user": {
@@ -61,7 +60,8 @@ def register(request):
                 **_serialize_profile(profile),
             },
         },
-        status=status.HTTP_201_CREATED,
+        message="User created successfully",
+        status_code=status.HTTP_201_CREATED,
     )
 
 
@@ -73,7 +73,7 @@ def login(request):
     user = authenticate(username=username, password=password)
 
     if user is None:
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        return error_response("Invalid credentials", status_code=status.HTTP_401_UNAUTHORIZED)
 
     profile, _ = Profile.objects.get_or_create(
         user=user,
@@ -86,8 +86,8 @@ def login(request):
 
     refresh = RefreshToken.for_user(user)
 
-    return Response(
-        {
+    return success_response(
+        data={
             "token": str(refresh.access_token),
             "refreshToken": str(refresh),
             "user": {
@@ -111,7 +111,7 @@ def get_profile(request):
     )
 
     if request.method == "GET":
-        return Response(_serialize_profile(profile))
+        return success_response(data=_serialize_profile(profile))
 
     data = request.data
     profile.full_name = data.get("name", profile.full_name)
@@ -131,7 +131,7 @@ def get_profile(request):
     profile.career_goal = data.get("careerGoal", profile.career_goal)
     profile.save()
 
-    return Response({"message": "Profile updated", "user": _serialize_profile(profile)})
+    return success_response(data={"user": _serialize_profile(profile)}, message="Profile updated")
 
 
 @api_view(["POST"])
@@ -141,10 +141,7 @@ def logout(request):
     try:
         refresh_token = request.data.get("refreshToken")
         if not refresh_token:
-            return Response(
-                {"error": "Refresh token is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return error_response("Refresh token is required", status_code=status.HTTP_400_BAD_REQUEST)
         
         try:
             refresh = RefreshToken(refresh_token)
@@ -171,17 +168,104 @@ def logout(request):
                 except TokenError:
                     pass
         except Exception as e:
-            return Response(
-                {"error": f"Invalid token: {str(e)}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return error_response(f"Invalid token: {str(e)}", status_code=status.HTTP_400_BAD_REQUEST)
         
-        return Response(
-            {"message": "Successfully logged out"},
-            status=status.HTTP_200_OK
-        )
+        return success_response(message="Successfully logged out", status_code=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return error_response(str(e), status_code=status.HTTP_400_BAD_REQUEST)
+
+
+def _serialize_preferences(preferences):
+    return {
+        "internship": bool(preferences.internship),
+        "job": bool(preferences.job),
+        "scholarship": bool(preferences.scholarship),
+        "exam": bool(preferences.exam),
+    }
+
+
+@api_view(["GET", "PUT"])
+@permission_classes([IsAuthenticated])
+def preferences_api(request):
+    preferences, _ = UserPreference.objects.get_or_create(user=request.user)
+
+    if request.method == "GET":
+        return success_response(data=_serialize_preferences(preferences))
+
+    payload = request.data or {}
+    for key in ["internship", "job", "scholarship", "exam"]:
+        if key in payload:
+            setattr(preferences, key, bool(payload.get(key)))
+    preferences.save()
+    return success_response(
+        data={"preferences": _serialize_preferences(preferences)},
+        message="Preferences updated",
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def change_password_api(request):
+    current_password = request.data.get("current_password")
+    new_password = request.data.get("new_password")
+
+    if not current_password or not new_password:
+        return error_response("Current and new password are required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+    if len(str(new_password)) < 6:
+        return error_response("New password must be at least 6 characters.", status_code=status.HTTP_400_BAD_REQUEST)
+
+    user = request.user
+    if not user.check_password(current_password):
+        return error_response("Current password is incorrect.", status_code=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+    return success_response(message="Password changed successfully.")
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def reset_tests_api(request):
+    from test_module.models import TestResult, SkillTestResult
+
+    quick_deleted, _ = TestResult.objects.filter(user=request.user).delete()
+    skill_deleted, _ = SkillTestResult.objects.filter(user=request.user).delete()
+
+    return success_response(
+        data={
+            "deleted": {
+                "quick_test_records": quick_deleted,
+                "skill_test_records": skill_deleted,
+            },
+        },
+        message="Test data reset successfully.",
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def reset_recommendations_api(request):
+    from prediction_module.models import (
+        UserRecommendationCache,
+        SavedRoadmap,
+        CollegeRecommendationCache,
+        CollegeDetailsInsightCache,
+    )
+
+    rec_deleted, _ = UserRecommendationCache.objects.filter(user=request.user).delete()
+    roadmap_deleted, _ = SavedRoadmap.objects.filter(user=request.user).delete()
+    college_rec_deleted, _ = CollegeRecommendationCache.objects.filter(user=request.user).delete()
+    college_detail_deleted, _ = CollegeDetailsInsightCache.objects.filter(user=request.user).delete()
+
+    return success_response(
+        data={
+            "deleted": {
+                "recommendation_cache": rec_deleted,
+                "saved_roadmaps": roadmap_deleted,
+                "college_recommendation_cache": college_rec_deleted,
+                "college_detail_cache": college_detail_deleted,
+            },
+        },
+        message="Recommendation data reset successfully.",
+    )

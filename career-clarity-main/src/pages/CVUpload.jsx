@@ -64,7 +64,12 @@ function CVUpload() {
 				navigate("/cv-analysis", { state: { analysis } });
 			}, 1400);
 		} catch (error) {
-			setErrorMessage(error.message || "CV upload failed. Please try again.");
+			const message = String(error?.message || "").toLowerCase();
+			if (message.includes("extract") || message.includes("process")) {
+				setErrorMessage("Could not extract skills. Try uploading a different file.");
+			} else {
+				setErrorMessage(error.message || "CV upload failed. Please try again.");
+			}
 		} finally {
 			setIsUploading(false);
 		}

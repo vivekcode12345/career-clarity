@@ -78,6 +78,7 @@ function Roadmap() {
 					{roadmap.steps?.map((step, index) => {
 						const stepTitle = typeof step === "string" ? step : step?.title || "Step";
 						const stepDesc = typeof step === "object" ? step?.description : "";
+						const stepTimeline = typeof step === "object" ? step?.timeline : "";
 						const resources = typeof step === "object" ? step?.resources || [] : [];
 
 						return (
@@ -100,6 +101,11 @@ function Roadmap() {
 								<div className="flex-1 space-y-3">
 									<div className="rounded-lg border-l-4 border-indigo-500 bg-gradient-to-r from-indigo-50 to-transparent p-4">
 										<p className="font-bold text-lg text-slate-900">{stepTitle}</p>
+										{stepTimeline && (
+											<span className="mt-2 inline-block rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+												{stepTimeline}
+											</span>
+										)}
 										{stepDesc && <p className="mt-2 text-sm text-slate-700">{stepDesc}</p>}
 										<p className="mt-2 text-xs font-medium text-indigo-600">
 											Phase {index + 1} of {roadmap.steps?.length || 0}

@@ -17,6 +17,23 @@ class Profile(models.Model):
         return self.user.username
 
 
+class UserPreference(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="preferences")
+    internship = models.BooleanField(default=True)
+    job = models.BooleanField(default=True)
+    scholarship = models.BooleanField(default=True)
+    exam = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} preferences"
+
+
 class TokenBlacklist(models.Model):
     """Store blacklisted tokens (refresh tokens that have been logged out)"""
     token = models.TextField(unique=True)

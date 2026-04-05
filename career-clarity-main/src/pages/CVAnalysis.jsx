@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import EmptyState from "../components/EmptyState";
 import { getLastCVAnalysis } from "../services/resumeService";
 import { openChatbot } from "../services/chatbotService";
 
@@ -9,13 +10,10 @@ function CVAnalysis() {
 	if (!analysis) {
 		return (
 			<div className="cc-fade-in space-y-8">
-				<div className="rounded-3xl bg-gradient-to-br from-slate-600 to-slate-700 p-8 text-white shadow-xl sm:p-10">
-					<div className="text-5xl mb-4">📄</div>
-					<h1 className="text-3xl font-extrabold">No Analysis Found</h1>
-					<p className="mt-3 text-lg text-slate-200">
-						Upload your CV to get personalized skill insights and career recommendations
-					</p>
-				</div>
+				<EmptyState
+					message="Upload your CV to get skill-based insights"
+					className="border-slate-300 bg-slate-100 text-slate-700"
+				/>
 
 				<Link
 					to="/cv-upload"

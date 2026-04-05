@@ -5,6 +5,7 @@ import { getQuickTest, submitQuickTest } from "../services/testService";
 function QuickTest() {
 	const [questions, setQuestions] = useState([]);
 	const [answers, setAnswers] = useState({});
+	const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isPreparingAnalysis, setIsPreparingAnalysis] = useState(false);
 	const [hasAttempted, setHasAttempted] = useState(false);
@@ -14,6 +15,8 @@ function QuickTest() {
 	
 	useEffect(() => {
 		const fetchQuestions = async () => {
+			setIsLoadingQuestions(true);
+			setErrorMessage("");
 			try {
 				const data = await getQuickTest();
 				if (data.attempted) {
@@ -24,12 +27,22 @@ function QuickTest() {
 				}
 				setQuestions(data.questions);
 			} catch (err) {
-				console.error(err);
+				setErrorMessage(err?.response?.data?.message || "Failed to load questions. Please refresh and try again.");
+			} finally {
+				setIsLoadingQuestions(false);
 			}
 		};
 
 		fetchQuestions();
 	}, []);
+
+	if (isLoadingQuestions) {
+		return (
+			<div className="flex h-64 items-center justify-center rounded-2xl bg-white shadow-lg">
+				<Loader label="Loading your quick test questions..." />
+			</div>
+		);
+	}
 
 	const answeredCount = useMemo(() => Object.keys(answers).length, [answers]);
 	const progress = questions.length
@@ -88,7 +101,7 @@ function QuickTest() {
 				setIsPreparingAnalysis(false);
 			}, 1200);
 		} catch (error) {
-			if (error.response?.data?.attempted) {
+			if (error.response?.data?.data?.attempted) {
 				setHasAttempted(true);
 				setSuccessMessage(error.response?.data?.message || "You have already attempted the quick test.");
 				setIsPreparingAnalysis(false);

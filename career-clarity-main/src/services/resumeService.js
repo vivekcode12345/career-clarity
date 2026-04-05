@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { getApiData, getApiMessage, getApiErrorMessage } from "./api";
 
 function normalizeCVAnalysis(payload) {
 	if (!payload) {
@@ -15,7 +15,9 @@ function normalizeCVAnalysis(payload) {
 
 	const extractedSkills = Array.isArray(payload.skills) ? payload.skills : [];
 	const resumeScore = extractedSkills.length > 0 ? Math.min(95, 55 + extractedSkills.length * 7) : 55;
-	const uploadMessage = typeof payload.message === "string" && payload.message.trim().length > 0
+	const uploadMessage = typeof payload.uploadMessage === "string" && payload.uploadMessage.trim().length > 0
+		? payload.uploadMessage.trim()
+		: typeof payload.message === "string" && payload.message.trim().length > 0
 		? payload.message.trim()
 		: "Document uploaded successfully.";
 
@@ -45,19 +47,21 @@ export async function uploadCV(file) {
 			},
 		});
 
-		const analysis = normalizeCVAnalysis(response.data?.analysis || response.data);
+		const data = getApiData(response);
+		const message = getApiMessage(response);
+		const analysis = normalizeCVAnalysis({ ...data, uploadMessage: message });
 		saveLastCVAnalysis(analysis);
 		return analysis;
 	} catch (error) {
-		const apiMessage = error.response?.data?.error;
-		throw new Error(apiMessage || "CV upload failed. Please try again.");
+		throw new Error(getApiErrorMessage(error, "CV upload failed. Please try again."));
 	}
 }
 
 export async function hasUploadedCV() {
 	try {
 		const response = await api.get("/cv/cv-data/");
-		return Array.isArray(response.data?.skills) && response.data.skills.length > 0;
+		const data = getApiData(response);
+		return Array.isArray(data?.skills) && data.skills.length > 0;
 	} catch (error) {
 		if (error.response?.status === 404) {
 			return false;
@@ -77,7 +81,8 @@ export async function getProfileReadiness() {
 	try {
 		try {
 			const completion = await api.get("/cv/profile-completion-check/");
-			if (completion?.data?.is_complete) {
+			const completionData = getApiData(completion);
+			if (completionData?.is_complete) {
 				return true;
 			}
 		} catch {
@@ -85,7 +90,7 @@ export async function getProfileReadiness() {
 		}
 
 		const response = await api.get("/cv/profile-skills/");
-		const profile = response.data;
+		const profile = getApiData(response);
 		const hasProfileSkills = Array.isArray(profile.skills) && profile.skills.length > 0;
 		if (hasProfileSkills) {
 			return true;
@@ -93,10 +98,11 @@ export async function getProfileReadiness() {
 
 		try {
 			const cvResponse = await api.get("/cv/cv-data/");
-			if (cvResponse?.data?.uploaded === true) {
+			const cvData = getApiData(cvResponse);
+			if (cvData?.uploaded === true) {
 				return true;
 			}
-			return Array.isArray(cvResponse.data?.skills);
+			return Array.isArray(cvData?.skills);
 		} catch {
 			return false;
 		}

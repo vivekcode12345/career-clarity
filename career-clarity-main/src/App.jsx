@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 import QuickTestPage from "./pages/QuickTest";
 import TestPage from "./pages/TestPage";
 import Recommendations from "./pages/Recommendations";
@@ -17,6 +18,7 @@ import CVUpload from "./pages/CVUpload";
 import CVAnalysis from "./pages/CVAnalysis";
 import Chatbot from "./components/Chatbot";
 import { isAuthenticated, isGraduateUser, syncCurrentUser } from "./services/authService";
+import { playClickSound } from "./utils/sound";
 
 function AppLayout({ children }) {
   const location = useLocation();
@@ -30,6 +32,31 @@ function AppLayout({ children }) {
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
+
+	useEffect(() => {
+		const clickSelector = 'button, a, [role="button"], input[type="button"], input[type="submit"]';
+
+		const handleGlobalClick = (event) => {
+			const target = event.target instanceof Element ? event.target : null;
+			if (!target) return;
+
+			if (target.closest(clickSelector)) {
+				playClickSound();
+			}
+		};
+
+		const handleFormSubmit = () => {
+			playClickSound();
+		};
+
+		document.addEventListener("click", handleGlobalClick, true);
+		document.addEventListener("submit", handleFormSubmit, true);
+
+		return () => {
+			document.removeEventListener("click", handleGlobalClick, true);
+			document.removeEventListener("submit", handleFormSubmit, true);
+		};
+	}, []);
 
   const isTestRoute = location.pathname === "/quick-test" || location.pathname === "/test";
 	const shouldHideChrome = isTestRoute;
@@ -127,6 +154,14 @@ function App() {
 					element={
 						<PrivateRoute>
 							<Profile />
+						</PrivateRoute>
+					}
+				/>
+				<Route
+					path="/settings"
+					element={
+						<PrivateRoute>
+							<Settings />
 						</PrivateRoute>
 					}
 				/>

@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { getApiData } from "./api";
 
 const fallbackColleges = [
 	{ id: 1, name: "Delhi Technical University", location: "Delhi", course: "B.Tech CSE", fees: "₹2.1L/year" },
@@ -9,7 +9,7 @@ const fallbackColleges = [
 export async function searchColleges(filters) {
 	try {
 		const response = await api.get("/colleges/", { params: filters });
-		return response.data;
+		return getApiData(response);
 	} catch {
 		const query = (filters?.search || "").toLowerCase();
 		const location = (filters?.location || "").toLowerCase();
@@ -29,7 +29,7 @@ export async function searchColleges(filters) {
 export async function getCollegeDetails(name) {
 	try {
 		const response = await api.get("/college/details/", { params: { name } });
-		return response.data;
+		return getApiData(response);
 	} catch {
 		const matched = fallbackColleges.find((college) => (college.name || "").toLowerCase() === (name || "").toLowerCase());
 		if (!matched) {

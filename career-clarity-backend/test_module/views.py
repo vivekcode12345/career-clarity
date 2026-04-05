@@ -1,12 +1,12 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from .models import Question , TestResult ,SkillTestResult
 import random
 from django.utils import timezone
 from datetime import timedelta
 from accounts.models import Profile
 from cv_module.models import CVProfile
+from core.api_response import success_response, error_response
 
 
 
@@ -15,11 +15,13 @@ from cv_module.models import CVProfile
 @permission_classes([IsAuthenticated])
 def get_quick_test(request):
     if TestResult.objects.filter(user=request.user).exists():
-        return Response({
-            "attempted": True,
-            "message": "You have already attempted the quick test.",
-            "questions": []
-        })
+        return success_response(
+            data={
+                "attempted": True,
+                "questions": [],
+            },
+            message="You have already attempted the quick test.",
+        )
 
     profile, _ = Profile.objects.get_or_create(
         user=request.user,
@@ -110,19 +112,24 @@ def get_quick_test(request):
     if len(data) < target_total:
         message = "Quick test is ready with the available class-matched questions."
 
-    return Response({"attempted": False, "questions": data, "message": message, "class_level": class_level})
+    return success_response(
+        data={
+            "attempted": False,
+            "questions": data,
+            "class_level": class_level,
+        },
+        message=message,
+    )
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def submit_quick_test(request):
     user = request.user
 
     if TestResult.objects.filter(user=user).exists():
-        return Response(
-            {
-                "attempted": True,
-                "message": "You have already attempted the quick test."
-            },
-            status=400
+        return error_response(
+            "You have already attempted the quick test.",
+            data={"attempted": True},
+            status_code=400,
         )
 
     answers = request.data.get("answers", {})
@@ -159,9 +166,7 @@ def submit_quick_test(request):
         interest_data=interest_data
     )
 
-    return Response({
-        "message": "Test submitted successfully"
-    })
+    return success_response(message="Test submitted successfully")
 
 def get_user_skill(user):
     from cv_module.models import CVProfile
@@ -211,10 +216,12 @@ def get_skill_options(request):
         seen.add(value)
         normalized.append(value)
 
-    return Response({
-        "skills": normalized,
-        "count": len(normalized),
-    })
+    return success_response(
+        data={
+            "skills": normalized,
+            "count": len(normalized),
+        }
+    )
 
 
 def _cooldown_response(last_attempt):
@@ -226,15 +233,15 @@ def _cooldown_response(last_attempt):
     remaining_minutes = (remaining_seconds % 3600) // 60
 
     skill = _normalize_skill(last_attempt.skill)
-    return Response(
-        {
+    return error_response(
+        f"You can retake the {skill} test after {remaining_hours}h {remaining_minutes}m.",
+        data={
             "cooldown": True,
             "skill": skill,
-            "message": f"You can retake the {skill} test after {remaining_hours}h {remaining_minutes}m.",
             "cooldown_until": cooldown_until.isoformat(),
             "remaining_seconds": remaining_seconds,
         },
-        status=429,
+        status_code=429,
     )
 
 
@@ -278,15 +285,17 @@ def get_skill_cooldown_status(request):
             skill_param,
             {"cooldown": False, "remaining_seconds": 0, "message": "Skill test is available."},
         )
-        return Response({"skill": skill_param, "user_id": user.id, "username": user.username, **skill_payload})
+        return success_response(data={"skill": skill_param, "user_id": user.id, "username": user.username, **skill_payload})
 
-    return Response({
-        "cooldown": bool(cooldown_by_skill),
-        "cooldown_by_skill": cooldown_by_skill,
-        "message": "Per-skill cooldown status loaded.",
-        "user_id": user.id,
-        "username": user.username,
-    })
+    return success_response(
+        data={
+            "cooldown": bool(cooldown_by_skill),
+            "cooldown_by_skill": cooldown_by_skill,
+            "user_id": user.id,
+            "username": user.username,
+        },
+        message="Per-skill cooldown status loaded.",
+    )
 
 
 @api_view(['GET'])
@@ -325,11 +334,14 @@ def get_skill_test(request):
     )
 
     if questions.count() < 15:
-        return Response({
-            "skill": skill,
-            "questions": [],
-            "message": "Unable to generate enough questions"
-        })
+        return error_response(
+            "Unable to generate enough questions",
+            data={
+                "skill": skill,
+                "questions": [],
+            },
+            status_code=503,
+        )
 
     # STEP 5: Select exactly 15
     selected = random.sample(list(questions), 15)
@@ -348,11 +360,13 @@ def get_skill_test(request):
             }
         })
 
-    return Response({
-        "skill": skill,
-        "total_questions": 15,
-        "questions": data
-    })
+    return success_response(
+        data={
+            "skill": skill,
+            "total_questions": 15,
+            "questions": data,
+        }
+    )
 def get_skill_level(score, total):
     percentage = (score / total) * 100
 
@@ -376,7 +390,7 @@ def submit_skill_test(request):
     answers = request.data.get("answers", {})
 
     if not answers:
-        return Response({"error": "No answers provided"}, status=400)
+        return error_response("No answers provided", status_code=400)
 
     score = 0
     total = len(answers)
@@ -401,9 +415,12 @@ def submit_skill_test(request):
         level=level
     )
 
-    return Response({
-        "score": score,
-        "total": total,
-        "level": level,
-        "message": f"You are {level} in {skill}"
-    })
+    return success_response(
+        data={
+            "score": score,
+            "total": total,
+            "level": level,
+            "skill": skill,
+        },
+        message=f"You are {level} in {skill}",
+    )

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import EmptyState from "../components/EmptyState";
 import { getCurrentUser } from "../services/authService";
-import { getQuickTest } from "../services/testService";
 import { openChatbot } from "../services/chatbotService";
+import { getDashboardSummary } from "../services/careerService";
 
 const actionCards = [
 	{
@@ -42,21 +43,23 @@ const statCards = [
 	{
 		emoji: "📝",
 		label: "Profile Status",
-		value: "In Progress",
+		value: "0%",
 		color: "from-blue-500 to-cyan-400",
+		key: "profile",
 	},
 	{
 		emoji: "✅",
 		label: "Quick Test",
-		value: "Ready to Start",
+		value: "Not Attempted",
 		color: "from-emerald-500 to-teal-400",
 		key: "test",
 	},
 	{
 		emoji: "🎯",
 		label: "Career Path",
-		value: "Discover Now",
+		value: "Not Discovered",
 		color: "from-purple-500 to-indigo-400",
+		key: "career",
 	},
 ];
 
@@ -66,18 +69,40 @@ function Dashboard() {
 	const educationLevel = user?.educationLevel || "Class 12";
 	const isGraduate = educationLevel === "Graduate";
 	const [quickTestAttempted, setQuickTestAttempted] = useState(false);
+	const [dashboardSummary, setDashboardSummary] = useState({
+		top_career: null,
+		skill_gap: null,
+		top_alerts: [],
+		progress: { completed_steps: 0, total_steps: 5, label: "Step 0 of 5 completed" },
+		stats: {
+			profile_completion_percent: 0,
+			quick_test_attempted: false,
+			career_discovered: false,
+		},
+	});
 
 	useEffect(() => {
-		const loadQuickTestStatus = async () => {
+		const loadDashboardData = async () => {
 			try {
-				const data = await getQuickTest();
-				setQuickTestAttempted(Boolean(data?.attempted));
+				const data = await getDashboardSummary();
+				setDashboardSummary({
+					top_career: data?.top_career || null,
+					skill_gap: data?.skill_gap || null,
+					top_alerts: Array.isArray(data?.top_alerts) ? data.top_alerts : [],
+					progress: data?.progress || { completed_steps: 0, total_steps: 5, label: "Step 0 of 5 completed" },
+					stats: data?.stats || {
+						profile_completion_percent: 0,
+						quick_test_attempted: false,
+						career_discovered: false,
+					},
+				});
+				setQuickTestAttempted(Boolean(data?.stats?.quick_test_attempted));
 			} catch {
 				setQuickTestAttempted(false);
 			}
 		};
 
-		loadQuickTestStatus();
+		loadDashboardData();
 	}, [user?.username, user?.name]);
 
 	const testAction = quickTestAttempted
@@ -92,20 +117,61 @@ function Dashboard() {
 		(card) => !card.onlyGraduate || isGraduate
 	);
 
+	const profileCompletionPercent = Number(dashboardSummary?.stats?.profile_completion_percent || 0);
+	const hasProfileData = profileCompletionPercent > 0;
+	const hasRecommendation = Boolean(dashboardSummary?.top_career?.title);
+
 	const visibleStatCards = statCards.map((card) => {
-		if (card.key !== "test") {
-			return card;
+		if (card.key === "profile") {
+			return {
+				...card,
+				label: "Profile Completion",
+				value: `${dashboardSummary?.stats?.profile_completion_percent || 0}%`,
+			};
 		}
 
-		return {
-			...card,
-			label: quickTestAttempted ? "Skill Test" : "Quick Test",
-			value: quickTestAttempted ? "Ready to Start" : "Ready to Start",
-		};
+		if (card.key === "test") {
+			return {
+				...card,
+				label: quickTestAttempted ? "Skill Test" : "Quick Test",
+				value: quickTestAttempted ? "Attempted" : "Not Attempted",
+			};
+		}
+
+		if (card.key === "career") {
+			return {
+				...card,
+				label: "Career Path",
+				value: dashboardSummary?.top_career?.title || "Not Discovered",
+			};
+		}
+
+		return card;
 	});
 
 	return (
 		<div className="space-y-8">
+			{!hasProfileData && (
+				<EmptyState
+					message="Complete your profile to unlock personalized recommendations"
+					className="cc-fade-in border-indigo-200 bg-indigo-50 text-indigo-700"
+				/>
+			)}
+
+			{hasProfileData && !quickTestAttempted && (
+				<EmptyState
+					message="Take the quick test to discover your career path"
+					className="cc-fade-in border-amber-200 bg-amber-50 text-amber-700"
+				/>
+			)}
+
+			{quickTestAttempted && !hasRecommendation && (
+				<EmptyState
+					message="No recommendations available yet. Complete your profile and test."
+					className="cc-fade-in border-rose-200 bg-rose-50 text-rose-700"
+				/>
+			)}
+
 			{/* Header: Welcome Section with gradient background */}
 			<section className="cc-fade-in relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-800 p-8 sm:p-10 text-white shadow-xl">
 				<div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl"></div>
@@ -159,6 +225,69 @@ function Dashboard() {
 							</p>
 						</div>
 					))}
+				</div>
+			</section>
+
+			{/* Smart Insights Section */}
+			<section className="cc-fade-in" style={{ animationDelay: "130ms" }}>
+				<div className="grid gap-4 lg:grid-cols-3">
+					<div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
+						<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">🎯 Top Career Recommendation</p>
+						<p className="mt-2 text-lg font-bold text-slate-900">{dashboardSummary?.top_career?.title || "Not available yet"}</p>
+						<p className="mt-1 text-sm text-slate-600 line-clamp-3">
+							{dashboardSummary?.top_career?.reason || "No recommendations available yet. Complete your profile and test."}
+						</p>
+					</div>
+
+					<div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
+						<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">⚠️ Skill Gap Snapshot</p>
+						{Array.isArray(dashboardSummary?.skill_gap?.missing_skills) && dashboardSummary.skill_gap.missing_skills.length > 0 ? (
+							<ul className="mt-2 space-y-1 text-sm text-slate-700">
+								{dashboardSummary.skill_gap.missing_skills.slice(0, 4).map((skill) => (
+									<li key={skill}>• {skill}</li>
+								))}
+							</ul>
+						) : (
+							<p className="mt-2 text-sm text-slate-600">No critical missing skills identified yet.</p>
+						)}
+					</div>
+
+					<div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
+						<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">🔔 Top Opportunities</p>
+						{dashboardSummary?.top_alerts?.length > 0 ? (
+							<div className="mt-2 space-y-2 text-sm text-slate-700">
+								{dashboardSummary.top_alerts.slice(0, 3).map((alert) => (
+									<div key={alert.id || `${alert.title}-${alert.type}`} className="rounded-lg bg-slate-50 p-2">
+										<p className="font-semibold text-slate-900 line-clamp-1">{alert.title}</p>
+										<p className="text-xs text-slate-600">Deadline: {alert.deadline_display || alert.deadline || "To be announced"}</p>
+									</div>
+								))}
+							</div>
+						) : (
+							<p className="mt-2 text-sm text-slate-600">No current opportunities found for your profile.</p>
+						)}
+					</div>
+				</div>
+
+				<div className="mt-4 rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
+					<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">🛤️ Progress Indicator</p>
+					<p className="mt-2 text-sm font-semibold text-slate-900">
+						{dashboardSummary?.progress?.label || "Step 0 of 5 completed"}
+					</p>
+					<div className="mt-3 h-2 w-full rounded-full bg-slate-200">
+						<div
+							className="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+							style={{
+								width: `${Math.max(
+									0,
+									Math.min(
+										100,
+										((dashboardSummary?.progress?.completed_steps || 0) / (dashboardSummary?.progress?.total_steps || 5)) * 100
+									)
+								)}%`,
+							}}
+						/>
+					</div>
 				</div>
 			</section>
 

@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { getApiData, getApiErrorMessage } from "./api";
 
 export function openChatbot(initialMessage = "") {
 	if (typeof window === "undefined") return;
@@ -13,10 +13,11 @@ export function openChatbot(initialMessage = "") {
 export async function sendChatMessage(message) {
 	try {
 		const response = await api.post("/chatbot/", { message });
-		return response.data;
+		return getApiData(response);
 	} catch (error) {
 		const status = error?.response?.status;
-		const backendMessage = error?.response?.data?.reply || error?.response?.data?.message || error?.response?.data?.detail;
+		const payload = error?.response?.data?.data || {};
+		const backendMessage = payload?.reply || getApiErrorMessage(error, "");
 
 		if (status === 401) {
 			return {

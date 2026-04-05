@@ -1,32 +1,32 @@
-import api from "./api";
+import api, { getApiData } from "./api";
 
 export const getQuickTest = async () => {
   const res = await api.get("/test/quick/");
-  return res.data;
+  return getApiData(res);
 };
 
 export const submitQuickTest = async (answers) => {
   const res = await api.post("/test/quick/submit/", {
     answers,
   });
-  return res.data;
+  return getApiData(res);
 };
 
 export const getSkillTest = async (skill) => {
   const res = await api.get("/test/skill/", {
     params: { skill }
   });
-  return res.data;
+  return getApiData(res);
 };
 
 export const getSkillCooldownStatus = async () => {
   const res = await api.get("/test/skill/cooldown/");
-  return res.data;
+  return getApiData(res);
 };
 
 export const getSkillOptions = async () => {
   const res = await api.get("/test/skill/options/");
-  return res.data;
+  return getApiData(res);
 };
 
 export const submitSkillTest = async (answers, skill) => {
@@ -34,10 +34,10 @@ export const submitSkillTest = async (answers, skill) => {
     answers,
     skill,
   });
-  return res.data;
+  return getApiData(res);
 };
 
 export const getPredictions = async () => {
   const res = await api.get("/predict/");
-  return res.data;
+  return getApiData(res);
 };

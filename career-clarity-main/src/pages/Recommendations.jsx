@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import EmptyState from "../components/EmptyState";
 import Loader from "../components/Loader";
 import { getCareerRecommendations } from "../services/careerService";
 import { getCurrentUser } from "../services/authService";
 import { openChatbot } from "../services/chatbotService";
 
 function Recommendations() {
+	const getShortText = (value, max = 110) => {
+		const text = String(value || "").trim();
+		if (!text) return "";
+		if (text.length <= max) return text;
+		return `${text.slice(0, max).trim()}...`;
+	};
+
 	const [careers, setCareers] = useState([]);
 	const [ability, setAbility] = useState("");
 	const [interest, setInterest] = useState("");
@@ -15,6 +23,7 @@ function Recommendations() {
 	const [savedRoadmapTitles, setSavedRoadmapTitles] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [errorMessage, setErrorMessage] = useState("");
+	const hasUserSkillData = skills.length > 0 || skillHistory.length > 0 || Boolean(skillTest?.skill);
 
 	useEffect(() => {
 		const loadRecommendations = async () => {
@@ -36,9 +45,18 @@ function Recommendations() {
 						if (item && typeof item === "object") {
 							return {
 								title: item.title || item.name || item.career || "Career Path",
-								description: item.description || "Recommended based on your quick test profile and learning direction.",
+								description: item.description || item.reason || "Recommended based on your quick test profile and learning direction.",
+								nextStep: item.nextStep || item.next_step || "",
 								requiredSkills: item.requiredSkills || item.skills || [],
 								salaryRange: item.salaryRange || item.salary || "",
+								timeline: item.timeline && typeof item.timeline === "object" ? item.timeline : null,
+								skillGap:
+									item.skill_gap && typeof item.skill_gap === "object"
+										? {
+											haveSkills: Array.isArray(item.skill_gap.have_skills) ? item.skill_gap.have_skills : [],
+											missingSkills: Array.isArray(item.skill_gap.missing_skills) ? item.skill_gap.missing_skills : [],
+									  }
+									: null,
 							};
 						}
 
@@ -222,8 +240,15 @@ function Recommendations() {
 								</div>
 
 								<p className="mt-4 text-sm text-slate-600">
-									{career.description || "A rewarding career path based on your profile"}
+									{getShortText(career.description || "A rewarding career path based on your profile", 95)}
 								</p>
+
+								{career.nextStep && (
+									<div className="mt-3 rounded-lg bg-blue-50 p-2.5">
+										<p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Next Step</p>
+										<p className="mt-1 text-xs text-slate-700">{getShortText(career.nextStep, 75)}</p>
+									</div>
+								)}
 
 								{career.roadmapFocus && (
 									<div className="mt-4 rounded-lg bg-slate-50 p-3">
@@ -246,6 +271,45 @@ function Recommendations() {
 									</div>
 								)}
 
+								{career.skillGap && (() => {
+									const haveSkills = Array.isArray(career.skillGap.haveSkills) ? career.skillGap.haveSkills : [];
+									const missingSkills = Array.isArray(career.skillGap.missingSkills) ? career.skillGap.missingSkills : [];
+									const hasGapData = haveSkills.length > 0 || missingSkills.length > 0;
+
+									if (!hasUserSkillData) {
+										return (
+											<div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+												<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">🎯 Skill Gap</p>
+												<p className="mt-2 text-xs text-slate-600">No skill data available. Upload CV or take skill test.</p>
+											</div>
+										);
+									}
+
+									if (!hasGapData) {
+										return null;
+									}
+
+									return (
+									<div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+										<p className="text-xs font-semibold uppercase tracking-wide text-slate-600">🎯 Skill Gap</p>
+											<div className="mt-2 space-y-2 text-xs text-slate-700">
+												{haveSkills.length > 0 && (
+													<div>
+														<p className="font-semibold text-emerald-700">✅ You have:</p>
+														<p className="mt-0.5">{haveSkills.slice(0, 4).join(", ")}</p>
+													</div>
+												)}
+												{missingSkills.length > 0 && (
+													<div>
+														<p className="font-semibold text-rose-700">❌ You need:</p>
+														<p className="mt-0.5">{missingSkills.slice(0, 4).join(", ")}</p>
+													</div>
+												)}
+											</div>
+									</div>
+									);
+								})()}
+
 								{/* Salary Range */}
 								{career.salaryRange && (
 									<div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 p-3">
@@ -253,6 +317,17 @@ function Recommendations() {
 										<div>
 											<p className="text-xs font-semibold text-slate-600">Expected Salary</p>
 											<p className="font-bold text-emerald-700">{career.salaryRange}</p>
+										</div>
+									</div>
+								)}
+
+								{career.timeline?.duration && (
+									<div className="mt-3 flex items-center gap-2 rounded-lg bg-indigo-50 p-3">
+										<span className="text-xl">📅</span>
+										<div>
+											<p className="text-xs font-semibold text-slate-600">Estimated Timeline</p>
+											<p className="font-bold text-indigo-700">{career.timeline.duration}</p>
+											<p className="text-[11px] text-indigo-600">{career.timeline.stage}</p>
 										</div>
 									</div>
 								)}
@@ -267,11 +342,10 @@ function Recommendations() {
 							</div>
 						))
 					) : (
-						<div className="cc-fade-in col-span-full rounded-2xl border-2 border-amber-200 bg-amber-50 p-8 text-center">
-							<p className="text-lg font-medium text-amber-900">
-								📊 Complete the quick test to get personalized recommendations
-							</p>
-						</div>
+						<EmptyState
+							message="No career recommendations found. Try updating your profile or retaking the test."
+							className="cc-fade-in col-span-full border-amber-200 bg-amber-50 text-amber-900"
+						/>
 					)}
 				</div>
 			</div>

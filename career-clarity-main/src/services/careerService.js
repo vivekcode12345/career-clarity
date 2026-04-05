@@ -1,4 +1,5 @@
-import api from "./api";
+import api, { getApiData } from "./api";
+import { getCurrentUser } from "./authService";
 
 const fallbackRecommendations = [
 	{
@@ -85,6 +86,83 @@ const fallbackRoadmap = {
 	certifications: ["Meta Front-End Developer", "AWS Cloud Practitioner", "Google IT Automation"],
 	skillRoadmap: ["Programming", "Data Structures", "Web Development", "System Design", "Communication"],
 };
+
+function normalize(value) {
+	return String(value || "").trim().toLowerCase();
+}
+
+function getCareerTrack(career) {
+	const text = normalize(career);
+	if (["data", "ai", "ml", "analyst"].some((token) => text.includes(token))) return "data";
+	if (["design", "ui", "ux", "graphic"].some((token) => text.includes(token))) return "design";
+	if (["business", "marketing", "product", "manager"].some((token) => text.includes(token))) return "business";
+	if (["developer", "software", "engineer", "web", "backend", "frontend"].some((token) => text.includes(token))) return "software";
+	return "general";
+}
+
+function buildPersonalizedFallbackRecommendations(user) {
+	const interests = Array.isArray(user?.interests) ? user.interests.map((item) => normalize(item)) : [];
+	const skills = Array.isArray(user?.skills) ? user.skills : [];
+	const interestText = interests.join(" ");
+
+	if (interestText.includes("design") || interestText.includes("creative")) {
+		return [
+			{ title: "UI/UX Designer", description: "Best fit for your creative and user-focused profile.", requiredSkills: ["Figma", "User Research", "Wireframing"], salaryRange: "₹4 LPA - ₹12 LPA" },
+			{ title: "Product Designer", description: "Great path if you enjoy balancing product goals and design quality.", requiredSkills: ["Interaction Design", "Prototyping", "Design Systems"], salaryRange: "₹6 LPA - ₹18 LPA" },
+			{ title: "Visual Designer", description: "Strong option for communication-heavy design roles.", requiredSkills: ["Typography", "Branding", "Illustration"], salaryRange: "₹4 LPA - ₹11 LPA" },
+		];
+	}
+
+	if (interestText.includes("business") || interestText.includes("management")) {
+		return [
+			{ title: "Business Analyst", description: "Aligned with your business and decision-making interests.", requiredSkills: ["Excel", "SQL", "Communication"], salaryRange: "₹4 LPA - ₹14 LPA" },
+			{ title: "Product Manager", description: "Ideal when you enjoy strategy, user needs, and execution.", requiredSkills: ["Strategy", "Research", "Leadership"], salaryRange: "₹8 LPA - ₹28 LPA" },
+			{ title: "Marketing Strategist", description: "Suited for growth, communication, and market insight.", requiredSkills: ["Digital Marketing", "Analytics", "Branding"], salaryRange: "₹4 LPA - ₹15 LPA" },
+		];
+	}
+
+	if (skills.some((item) => normalize(item).includes("python") || normalize(item).includes("sql"))) {
+		return [
+			{ title: "Data Analyst", description: "Fits your current analytical skill profile.", requiredSkills: ["SQL", "Python", "Statistics"], salaryRange: "₹4 LPA - ₹12 LPA" },
+			{ title: "Data Scientist", description: "A strong progression path from your data fundamentals.", requiredSkills: ["Machine Learning", "Python", "Data Visualization"], salaryRange: "₹6 LPA - ₹22 LPA" },
+			{ title: "AI Engineer", description: "Good fit if you want to build intelligent systems.", requiredSkills: ["Python", "ML", "APIs"], salaryRange: "₹7 LPA - ₹25 LPA" },
+		];
+	}
+
+	return fallbackRecommendations;
+}
+
+function buildCareerSpecificFallbackRoadmap(career, user) {
+	const safeCareer = career || fallbackRoadmap.career;
+	const track = getCareerTrack(safeCareer);
+	const skills = Array.isArray(user?.skills) && user.skills.length > 0 ? user.skills : fallbackRoadmap.skills;
+
+	const trackSteps = {
+		software: ["Coding Foundations", "Projects", "Backend & Databases", "Deployment", "Interview Prep", "Specialization"],
+		data: ["Statistics Basics", "SQL & Data Cleaning", "Dashboards", "ML Basics", "Model Evaluation", "Domain Portfolio"],
+		design: ["Design Principles", "Figma & Prototyping", "User Research", "Case Studies", "Design Handoff", "Specialization"],
+		business: ["Business Fundamentals", "Analytics Tools", "Market Research", "Strategy Projects", "Stakeholder Skills", "Role Portfolio"],
+		general: ["Explore Options", "Core Skills", "Pick a Track", "Build Portfolio", "Real Experience", "Apply & Improve"],
+	};
+
+	const timelines = ["Month 1", "Month 2-3", "Month 4-5", "Month 6-7", "Month 8-9", "Month 10-12"];
+	const labels = trackSteps[track] || trackSteps.general;
+
+	return {
+		...fallbackRoadmap,
+		career: safeCareer,
+		skills,
+		steps: labels.map((title, index) => ({
+			title,
+			description: `Focused step for ${safeCareer} based on your profile skills: ${skills.slice(0, 3).join(", ") || "foundation learning"}.`,
+			timeline: timelines[index] || `Phase ${index + 1}`,
+			resources: [
+				{ title: `${safeCareer} roadmap`, type: "docs", link: "https://roadmap.sh" },
+				{ title: `${safeCareer} practice`, type: "practice", link: "https://www.coursera.org" },
+			],
+		})),
+	};
+}
 
 const fallbackAlerts = [
 	{
@@ -175,32 +253,86 @@ const fallbackAlerts = [
 
 export async function submitQuickTestAnswers(payload) {
 	const response = await api.post("/test/quick/submit/", payload);
-	return response.data;
+	return getApiData(response);
 }
 
 export async function getCareerRecommendations() {
 	try {
 		const response = await api.get("/predict/");
-		return response.data;
+		return getApiData(response);
 	} catch {
-		return { recommendations: fallbackRecommendations };
+		const currentUser = getCurrentUser() || {};
+		return { recommendations: buildPersonalizedFallbackRecommendations(currentUser) };
 	}
 }
 
 export async function getCareerRoadmap(career) {
 	try {
 		const response = await api.get("/roadmap/", { params: { career } });
-		return response.data;
+		return getApiData(response);
 	} catch {
-		return { ...fallbackRoadmap, career: career || fallbackRoadmap.career };
+		const currentUser = getCurrentUser() || {};
+		return buildCareerSpecificFallbackRoadmap(career, currentUser);
 	}
 }
 
-export async function getAlerts() {
+export async function getAlerts(params = { page: 1, page_size: 10 }) {
 	try {
-		const response = await api.get("/alerts/");
-		return response.data;
+		const response = await api.get("/alerts/", { params });
+		const data = getApiData(response);
+		return {
+			...data,
+			alerts: Array.isArray(data?.results) ? data.results : [],
+		};
 	} catch {
-		return { alerts: fallbackAlerts };
+		return {
+			results: fallbackAlerts,
+			alerts: fallbackAlerts,
+			page: 1,
+			page_size: fallbackAlerts.length,
+			total_pages: 1,
+			total_count: fallbackAlerts.length,
+			recommended: fallbackAlerts.slice(0, 3),
+			cached: false,
+		};
+	}
+}
+
+export async function getDashboardSummary() {
+	try {
+		const response = await api.get("/dashboard/");
+		return getApiData(response);
+	} catch {
+		return {
+			top_career: fallbackRecommendations[0]
+				? {
+					title: fallbackRecommendations[0].title,
+					reason: fallbackRecommendations[0].description,
+					requiredSkills: fallbackRecommendations[0].requiredSkills || [],
+				}
+				: null,
+			skill_gap: {
+				have_skills: [],
+				missing_skills: fallbackRecommendations[0]?.requiredSkills?.slice(0, 2) || [],
+			},
+			top_alerts: (fallbackAlerts || []).slice(0, 3).map((item) => ({
+				id: item.id,
+				title: item.title,
+				type: item.type,
+				deadline: item.deadline,
+				deadline_display: item.deadline_display || item.deadline || "To be announced",
+				link: item.link,
+			})),
+			progress: {
+				completed_steps: 1,
+				total_steps: 5,
+				label: "Step 1 of 5 completed",
+			},
+			stats: {
+				profile_completion_percent: 40,
+				quick_test_attempted: false,
+				career_discovered: true,
+			},
+		};
 	}
 }

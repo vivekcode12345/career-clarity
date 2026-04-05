@@ -67,4 +67,35 @@ api.interceptors.response.use(
 	}
 );
 
+export function getApiData(response) {
+	if (!response) return {};
+	const payload = response.data;
+	if (payload && typeof payload === "object" && "success" in payload && "data" in payload) {
+		const data = payload.data || {};
+		if (payload.message && typeof data === "object" && data !== null && !Array.isArray(data) && !data.message) {
+			return { ...data, message: payload.message };
+		}
+		return data;
+	}
+	return payload || {};
+}
+
+export function getApiMessage(response) {
+	const payload = response?.data;
+	if (payload && typeof payload === "object" && typeof payload.message === "string") {
+		return payload.message;
+	}
+	return "";
+}
+
+export function getApiErrorMessage(error, fallback = "Request failed") {
+	const payload = error?.response?.data;
+	if (payload && typeof payload === "object") {
+		if (typeof payload.message === "string" && payload.message.trim()) return payload.message;
+		if (typeof payload.error === "string" && payload.error.trim()) return payload.error;
+		if (typeof payload.detail === "string" && payload.detail.trim()) return payload.detail;
+	}
+	return fallback;
+}
+
 export default api;
