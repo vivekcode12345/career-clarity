@@ -37,10 +37,10 @@ function Footer() {
 					) : (
 						<ul className="mt-3 space-y-2 text-sm text-slate-600">
 							<li>
-								<a href="#" className="transition hover:text-indigo-600">About</a>
+								<Link to="/about" className="transition hover:text-indigo-600">About</Link>
 							</li>
 							<li>
-								<a href="#" className="transition hover:text-indigo-600">Contact</a>
+								<Link to="/contact" className="transition hover:text-indigo-600">Contact</Link>
 							</li>
 							<li>
 								<Link to="/login" className="transition hover:text-indigo-600">Login</Link>

@@ -2,6 +2,31 @@ import api, { getApiData } from "./api";
 
 export const EDUCATION_LEVELS = ["Class 10", "Class 12", "Undergraduate", "Graduate"];
 
+function parseJwtPayload(token) {
+	if (!token) return null;
+	try {
+		const base64Url = token.split(".")[1];
+		if (!base64Url) return null;
+		const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+		const jsonPayload = decodeURIComponent(
+			atob(base64)
+				.split("")
+				.map((character) => `%${(`00${character.charCodeAt(0).toString(16)}`).slice(-2)}`)
+				.join("")
+		);
+		return JSON.parse(jsonPayload);
+	} catch {
+		return null;
+	}
+}
+
+function isJwtExpired(token) {
+	const payload = parseJwtPayload(token);
+	if (!payload?.exp) return true;
+	const nowInSeconds = Math.floor(Date.now() / 1000);
+	return payload.exp <= nowInSeconds;
+}
+
 export async function registerUser(payload) {
 	const normalizedPayload = {
 		...payload,
@@ -50,7 +75,19 @@ export function getCurrentUser() {
 }
 
 export function isAuthenticated() {
-	return Boolean(localStorage.getItem("authToken"));
+	const accessToken = localStorage.getItem("authToken");
+	const refreshToken = localStorage.getItem("refreshToken");
+
+	if (!accessToken || !refreshToken) {
+		return false;
+	}
+
+	if (isJwtExpired(refreshToken)) {
+		clearAuthSession();
+		return false;
+	}
+
+	return true;
 }
 
 export function isGraduateUser() {

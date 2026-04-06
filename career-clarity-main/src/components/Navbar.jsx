@@ -6,6 +6,8 @@ import logoFull from "../assets/logo-full.svg";
 import { logoutUser } from "../services/authService";
 
 const guestNavLinks = [
+	{ label: "About", to: "/about" },
+	{ label: "Contact", to: "/contact" },
 	{ label: "Features", to: "#features", type: "hash" },
 	{ label: "How it Works", to: "#how-it-works", type: "hash" },
 	{ label: "Login", to: "/login" },
@@ -100,11 +102,15 @@ function Navbar() {
 								<NavLink
 									to={link.to}
 									className={({ isActive }) =>
-										`rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
-											isActive
-												? "bg-indigo-100/90 text-indigo-700 shadow-sm"
-												: "text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-700"
-										}`
+										!isLoggedIn && link.label === "Register"
+											? "rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+											: !isLoggedIn && link.label === "Login"
+												? "rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 transition-all duration-200 hover:bg-indigo-50"
+												: `rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
+														isActive
+															? "bg-indigo-100/90 text-indigo-700 shadow-sm"
+															: "text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-700"
+												  }`
 									}
 								>
 									{link.label}
@@ -160,11 +166,15 @@ function Navbar() {
 										to={link.to}
 										onClick={() => setIsOpen(false)}
 										className={({ isActive }) =>
-											`block rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
-												isActive
-													? "bg-indigo-100/80 text-indigo-700"
-													: "text-slate-700 hover:bg-indigo-50/60 hover:text-indigo-600"
-											}`
+											!isLoggedIn && link.label === "Register"
+												? "block rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm"
+												: !isLoggedIn && link.label === "Login"
+													? "block rounded-xl border border-indigo-200 bg-white px-4 py-2 text-center text-sm font-semibold text-indigo-700"
+													: `block rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
+															isActive
+																? "bg-indigo-100/80 text-indigo-700"
+																: "text-slate-700 hover:bg-indigo-50/60 hover:text-indigo-600"
+													  }`
 										}
 									>
 										{link.label}
