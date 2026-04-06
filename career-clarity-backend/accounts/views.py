@@ -1,5 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -7,12 +9,42 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from datetime import datetime, timezone
 import logging
+import re
 from core.api_response import success_response, error_response
 
 from .models import Profile, TokenBlacklist, UserPreference
 
 
 logger = logging.getLogger(__name__)
+
+def _is_valid_email(email):
+    try:
+        validate_email(email)
+        return True
+    except ValidationError:
+        return False
+
+
+def _get_password_validation_error(password):
+    candidate = password or ""
+
+    if len(candidate) < 8:
+        return "Please use password that is more than 8 digit."
+
+    missing_rules = []
+    if not re.search(r"[A-Z]", candidate):
+        missing_rules.append("one uppercase letter")
+    if not re.search(r"[a-z]", candidate):
+        missing_rules.append("one lowercase letter")
+    if not re.search(r"\d", candidate):
+        missing_rules.append("one number")
+    if not re.search(r"[^A-Za-z0-9]", candidate):
+        missing_rules.append("one special character")
+
+    if missing_rules:
+        return f"Password is missing: {', '.join(missing_rules)}."
+
+    return ""
 
 
 def _serialize_profile(profile):
@@ -32,19 +64,37 @@ def _serialize_profile(profile):
 
 @api_view(["POST"])
 def register(request):
-    username = (request.data.get("username") or "").strip()
-    password = request.data.get("password")
+    email = (request.data.get("email") or "").strip().lower()
+    username = (request.data.get("username") or email or "").strip()
+    password = request.data.get("password") or ""
+    confirm_password = request.data.get("confirmPassword") or request.data.get("confirm_password") or ""
     name = (request.data.get("name") or username).strip()
-    email = (request.data.get("email") or "").strip()
     education_level = (request.data.get("educationLevel") or "Class 12").strip()
-    logger.info("Registration requested for username=%s", username or "<empty>")
+    logger.info("Registration requested for email=%s", email or "<empty>")
 
-    if not username or not password:
-        logger.warning("Registration failed due to missing credentials for username=%s", username or "<empty>")
-        return error_response("Username and password are required", status_code=status.HTTP_400_BAD_REQUEST)
+    if not email or not password or not confirm_password:
+        logger.warning("Registration failed due to missing required fields for email=%s", email or "<empty>")
+        return error_response("Email, password and confirm password are required", status_code=status.HTTP_400_BAD_REQUEST)
+
+    if not _is_valid_email(email):
+        logger.warning("Registration failed due to invalid email format: email=%s", email)
+        return error_response("Please enter a valid email address", status_code=status.HTTP_400_BAD_REQUEST)
+
+    password_error = _get_password_validation_error(password)
+    if password_error:
+        logger.warning("Registration failed due to weak password for email=%s", email)
+        return error_response(password_error, status_code=status.HTTP_400_BAD_REQUEST)
+
+    if password != confirm_password:
+        logger.warning("Registration failed due to password mismatch for email=%s", email)
+        return error_response("Password and confirm password do not match", status_code=status.HTTP_400_BAD_REQUEST)
 
     if User.objects.filter(username=username).exists():
         logger.warning("Registration failed because user already exists: username=%s", username)
+        return error_response("User already exists", status_code=status.HTTP_400_BAD_REQUEST)
+
+    if User.objects.filter(email__iexact=email).exists():
+        logger.warning("Registration failed because email already exists: email=%s", email)
         return error_response("User already exists", status_code=status.HTTP_400_BAD_REQUEST)
 
     user = User.objects.create_user(username=username, password=password, email=email)
@@ -75,14 +125,27 @@ def register(request):
 
 @api_view(["POST"])
 def login(request):
-    username = request.data.get("username")
-    password = request.data.get("password")
-    logger.info("Login requested for username=%s", username or "<empty>")
+    identifier = (request.data.get("identifier") or request.data.get("username") or request.data.get("email") or "").strip()
+    password = request.data.get("password") or ""
+    logger.info("Login requested for identifier=%s", identifier or "<empty>")
 
-    user = authenticate(username=username, password=password)
+    if not identifier or not password:
+        logger.warning("Login failed due to missing credentials for identifier=%s", identifier or "<empty>")
+        return error_response("Username/email and password are required", status_code=status.HTTP_400_BAD_REQUEST)
+
+    if "@" in identifier:
+        account = User.objects.filter(email__iexact=identifier).first()
+    else:
+        account = User.objects.filter(username=identifier).first()
+
+    if account is None:
+        logger.warning("Login failed because account not found: identifier=%s", identifier)
+        return error_response("Invalid credentials", status_code=status.HTTP_401_UNAUTHORIZED)
+
+    user = authenticate(username=account.username, password=password)
 
     if user is None:
-        logger.warning("Login failed for username=%s", username or "<empty>")
+        logger.warning("Login failed for identifier=%s", identifier or "<empty>")
         return error_response("Invalid credentials", status_code=status.HTTP_401_UNAUTHORIZED)
 
     profile, _ = Profile.objects.get_or_create(

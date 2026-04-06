@@ -47,9 +47,9 @@ function Navbar() {
 
 	const headerClass = isGuestHome
 		? isScrolled
-			? "sticky top-0 z-40 border-b border-slate-200 bg-white/95 text-slate-900 shadow-lg backdrop-blur-2xl"
-			: "sticky top-0 z-40 border-b border-slate-200/70 bg-white/85 text-slate-900 shadow-md backdrop-blur-xl"
-		: "sticky top-0 z-40 border-b border-indigo-100/50 bg-white/40 backdrop-blur-2xl";
+			? "fixed inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/95 text-slate-900 shadow-lg backdrop-blur-2xl transition-all duration-300"
+			: "fixed inset-x-0 top-0 z-40 border-b border-slate-200/70 bg-white/85 text-slate-900 shadow-md backdrop-blur-xl transition-all duration-300"
+		: "fixed inset-x-0 top-0 z-40 border-b border-indigo-100/50 bg-white/55 shadow-sm backdrop-blur-2xl transition-all duration-300";
 
 	const handleLogout = async () => {
 		if (isLoggingOut) {

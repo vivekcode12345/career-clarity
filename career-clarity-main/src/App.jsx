@@ -64,14 +64,14 @@ function AppLayout({ children }) {
 	const shouldHideChrome = isTestRoute;
 
   return (
-		<div className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-800">
+		<div className="relative min-h-screen overflow-x-hidden bg-slate-50 text-slate-800">
 			<div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-indigo-300/30 blur-3xl" />
 			<div className="pointer-events-none absolute -right-20 top-40 h-64 w-64 rounded-full bg-sky-300/25 blur-3xl" />
 			<div className="pointer-events-none absolute bottom-16 left-1/3 h-52 w-52 rounded-full bg-fuchsia-200/20 blur-3xl" />
 			{!shouldHideChrome ? <Navbar /> : null}
 			<main
 				className={`relative z-10 mx-auto w-full ${
-					shouldHideChrome ? "max-w-none px-0 py-0" : "max-w-7xl px-4 py-10 sm:px-6 lg:px-8"
+					shouldHideChrome ? "max-w-none px-0 py-0" : "max-w-7xl px-4 pb-10 pt-24 sm:px-6 lg:px-8"
 				}`}
 			>
 				{children}

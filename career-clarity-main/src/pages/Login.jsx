@@ -11,6 +11,7 @@ const initialFormData = {
 function Login() {
 	const navigate = useNavigate();
 	const [formData, setFormData] = useState(initialFormData);
+	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState("");
 	const [successMessage, setSuccessMessage] = useState("");
@@ -24,6 +25,7 @@ function Login() {
 		event.preventDefault();
 		setErrorMessage("");
 		setSuccessMessage("");
+
 		setIsLoading(true);
 
 		try {
@@ -93,7 +95,7 @@ function Login() {
 								value={formData.identifier}
 								onChange={onChange}
 								required
-								placeholder="your@email.com"
+								placeholder="Enter username or email"
 								className="cc-input"
 							/>
 						</div>
@@ -102,17 +104,34 @@ function Login() {
 							<label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">
 								🔐 Password
 							</label>
-							<input
-								id="password"
-								name="password"
-								type="password"
-								value={formData.password}
-								onChange={onChange}
-								required
-								minLength={6}
-								placeholder="••••••"
-								className="cc-input"
-							/>
+							<div className="relative">
+								<input
+									id="password"
+									name="password"
+									type={showPassword ? "text" : "password"}
+									value={formData.password}
+									onChange={onChange}
+									required
+									placeholder="••••••"
+									className="cc-input pr-10"
+								/>
+								<button
+									type="button"
+									onClick={() => setShowPassword((prev) => !prev)}
+									className="absolute inset-y-0 right-3 flex items-center text-slate-500 transition hover:text-indigo-600"
+									aria-label={showPassword ? "Hide password" : "Show password"}
+								>
+									{showPassword ? "🙈" : "👁️"}
+								</button>
+							</div>
+							<div className="mt-2 flex justify-end">
+								<a
+									href="mailto:careerclarity.support@gmail.com?subject=Password%20Reset%20Request"
+									className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline"
+								>
+									Forgot password?
+								</a>
+							</div>
 						</div>
 
 						{errorMessage && (
@@ -129,9 +148,9 @@ function Login() {
 						<button
 							type="submit"
 							disabled={isLoading}
-							className="cc-cta w-full flex items-center justify-center gap-2 py-3 shadow-lg"
+							className="cc-cta w-full flex items-center justify-center py-3 shadow-lg"
 						>
-							{isLoading ? <Loader label="Signing in..." size="sm" /> : "Sign In"}
+							{isLoading ? <Loader label="" size="sm" /> : "Sign In"}
 						</button>
 					</form>
 

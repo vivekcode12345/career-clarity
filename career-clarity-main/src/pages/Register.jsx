@@ -7,12 +7,54 @@ const initialFormData = {
 	name: "",
 	email: "",
 	password: "",
+	confirmPassword: "",
 	educationLevel: "Class 12",
 };
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function getPasswordValidationError(password) {
+	const candidate = password || "";
+
+	if (candidate.length < 8) {
+		return "Please use password that is more than 8 digit.";
+	}
+
+	const missingRules = [];
+	if (!/[A-Z]/.test(candidate)) missingRules.push("one uppercase letter");
+	if (!/[a-z]/.test(candidate)) missingRules.push("one lowercase letter");
+	if (!/\d/.test(candidate)) missingRules.push("one number");
+	if (!/[^A-Za-z0-9]/.test(candidate)) missingRules.push("one special character");
+
+	if (missingRules.length > 0) {
+		return `Password is missing: ${missingRules.join(", ")}.`;
+	}
+
+	return "";
+}
+
+function validateRegisterForm(formData) {
+	if (!EMAIL_REGEX.test((formData.email || "").trim())) {
+		return "Please enter a valid email address.";
+	}
+
+	const passwordError = getPasswordValidationError(formData.password);
+	if (passwordError) {
+		return passwordError;
+	}
+
+	if ((formData.confirmPassword || "") !== (formData.password || "")) {
+		return "Password and confirm password do not match.";
+	}
+
+	return "";
+}
 
 function Register() {
 	const navigate = useNavigate();
 	const [formData, setFormData] = useState(initialFormData);
+	const [showPassword, setShowPassword] = useState(false);
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState("");
 	const [successMessage, setSuccessMessage] = useState("");
@@ -26,6 +68,13 @@ function Register() {
 		event.preventDefault();
 		setErrorMessage("");
 		setSuccessMessage("");
+
+		const validationError = validateRegisterForm(formData);
+		if (validationError) {
+			setErrorMessage(validationError);
+			return;
+		}
+
 		setIsLoading(true);
 
 		try {
@@ -120,17 +169,55 @@ function Register() {
 							<label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">
 								🔐 Password
 							</label>
-							<input
-								id="password"
-								name="password"
-								type="password"
-								value={formData.password}
-								onChange={onChange}
-								required
-								minLength={6}
-								placeholder="••••••"
-								className="cc-input"
-							/>
+							<div className="relative">
+								<input
+									id="password"
+									name="password"
+									type={showPassword ? "text" : "password"}
+									value={formData.password}
+									onChange={onChange}
+									required
+									minLength={8}
+									placeholder="••••••"
+									className="cc-input pr-10"
+								/>
+								<button
+									type="button"
+									onClick={() => setShowPassword((prev) => !prev)}
+									className="absolute inset-y-0 right-3 flex items-center text-slate-500 transition hover:text-indigo-600"
+									aria-label={showPassword ? "Hide password" : "Show password"}
+								>
+									{showPassword ? "🙈" : "👁️"}
+								</button>
+							</div>
+							<p className="mt-1 text-xs text-slate-500">Must be 8+ chars with uppercase, lowercase, number, and special character.</p>
+						</div>
+
+						<div>
+							<label htmlFor="confirmPassword" className="mb-2 block text-sm font-semibold text-slate-700">
+								✅ Confirm Password
+							</label>
+							<div className="relative">
+								<input
+									id="confirmPassword"
+									name="confirmPassword"
+									type={showConfirmPassword ? "text" : "password"}
+									value={formData.confirmPassword}
+									onChange={onChange}
+									required
+									minLength={8}
+									placeholder="••••••"
+									className="cc-input pr-10"
+								/>
+								<button
+									type="button"
+									onClick={() => setShowConfirmPassword((prev) => !prev)}
+									className="absolute inset-y-0 right-3 flex items-center text-slate-500 transition hover:text-indigo-600"
+									aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+								>
+									{showConfirmPassword ? "🙈" : "👁️"}
+								</button>
+							</div>
 						</div>
 
 						<div>
@@ -167,9 +254,9 @@ function Register() {
 						<button
 							type="submit"
 							disabled={isLoading}
-							className="cc-cta w-full flex items-center justify-center gap-2 py-3 shadow-lg"
+							className="cc-cta w-full flex items-center justify-center py-3 shadow-lg"
 						>
-							{isLoading ? <Loader label="Creating account..." size="sm" /> : "Get Started"}
+							{isLoading ? <Loader label="" size="sm" /> : "Get Started"}
 						</button>
 					</form>
 

@@ -30,7 +30,9 @@ function isJwtExpired(token) {
 export async function registerUser(payload) {
 	const normalizedPayload = {
 		...payload,
+		email: payload?.email,
 		username: payload?.username || payload?.email || payload?.name,
+		confirmPassword: payload?.confirmPassword,
 	};
 	const response = await api.post("/auth/register/", normalizedPayload);
 	return getApiData(response);
@@ -39,7 +41,7 @@ export async function registerUser(payload) {
 export async function loginUser(payload) {
 	const normalizedPayload = {
 		password: payload?.password,
-		username: payload?.username || payload?.email || payload?.identifier,
+		identifier: payload?.identifier || payload?.username || payload?.email,
 	};
 	const response = await api.post("/auth/login/", normalizedPayload);
 	return getApiData(response);
