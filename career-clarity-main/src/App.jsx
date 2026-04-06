@@ -26,6 +26,10 @@ function AppLayout({ children }) {
   const location = useLocation();
   const [isFullscreenActive, setIsFullscreenActive] = useState(Boolean(document.fullscreenElement));
 
+	useEffect(() => {
+		window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+	}, [location.pathname, location.search]);
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreenActive(Boolean(document.fullscreenElement));
