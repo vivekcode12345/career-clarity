@@ -19,14 +19,14 @@ def _get_api_key():
     return os.getenv("OPENROUTER_API_KEY")
 
 
-def build_prompt(skill, num_questions):
+def build_prompt(skill, num_questions, difficulty_instruction="medium to hard"):
     return f"""
 Generate {num_questions} multiple choice questions for {skill} skill.
 
 Rules:
 - Each question must have 4 options (A, B, C, D)
 - Include correct answer
-- Difficulty: medium to hard
+- Difficulty: {difficulty_instruction}
 - Avoid duplicate questions
 - Return ONLY JSON
 - Do not include markdown code fences
@@ -135,7 +135,8 @@ def _normalized_question_payload(item):
     return payload
 
 
-def _save_questions(skill, question_items, needed):
+def _save_questions(skill, question_items, needed, difficulty_choices=None):
+    difficulty_choices = difficulty_choices or ["medium", "hard"]
     created = 0
     existing_texts = set(
         Question.objects.filter(type="skill", category=skill).values_list("question_text", flat=True)
@@ -162,7 +163,7 @@ def _save_questions(skill, question_items, needed):
             correct_answer=normalized["answer"],
             type="skill",
             category=skill,
-            difficulty=random.choice(["medium", "hard"])
+            difficulty=random.choice(difficulty_choices)
         )
         existing_texts.add(question_text)
         created += 1
@@ -245,8 +246,10 @@ def call_ai(prompt, model):
     return content
 
 
-def generate_and_save_questions(skill, required=15, current_count=0):
+def generate_and_save_questions(skill, required=15, current_count=0, difficulty_choices=None):
     try:
+        difficulty_choices = difficulty_choices or ["medium", "hard"]
+        difficulty_instruction = " / ".join(difficulty_choices)
         needed = required - current_count
 
         if needed <= 0:
@@ -260,12 +263,16 @@ def generate_and_save_questions(skill, required=15, current_count=0):
             while created < needed and attempts < max_attempts:
                 attempts += 1
                 remaining = needed - created
-                prompt = build_prompt(skill, min(max(remaining + 2, 5), 25))
+                prompt = build_prompt(
+                    skill,
+                    min(max(remaining + 2, 5), 25),
+                    difficulty_instruction=difficulty_instruction,
+                )
                 model = MODELS[(attempts - 1) % len(MODELS)]
 
                 ai_response = call_ai(prompt, model)
                 ai_questions = _extract_json_array(ai_response)
-                created_now = _save_questions(skill, ai_questions, remaining)
+                created_now = _save_questions(skill, ai_questions, remaining, difficulty_choices=difficulty_choices)
                 created += created_now
 
                 if created_now == 0:

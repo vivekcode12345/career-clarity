@@ -19,6 +19,13 @@ export const getSkillTest = async (skill) => {
   return getApiData(res);
 };
 
+export const getCombinedSkillTest = async (skills = []) => {
+  const res = await api.get("/test/skill/combined/", {
+    params: { skills: skills.join(",") },
+  });
+  return getApiData(res);
+};
+
 export const getSkillCooldownStatus = async () => {
   const res = await api.get("/test/skill/cooldown/");
   return getApiData(res);
@@ -33,6 +40,14 @@ export const submitSkillTest = async (answers, skill) => {
   const res = await api.post("/test/test/skill/submit/", {
     answers,
     skill,
+  });
+  return getApiData(res);
+};
+
+export const submitCombinedSkillTest = async (answers, skills = []) => {
+  const res = await api.post("/test/skill/combined/submit/", {
+    answers,
+    skills,
   });
   return getApiData(res);
 };

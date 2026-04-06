@@ -4,6 +4,7 @@ from .models import Question , TestResult ,SkillTestResult
 import random
 from django.utils import timezone
 from datetime import timedelta
+from collections import defaultdict
 from accounts.models import Profile
 from cv_module.models import CVProfile
 from core.api_response import success_response, error_response
@@ -190,6 +191,78 @@ def _normalize_skill(skill):
 
 def _last_skill_attempt(user, skill):
     return SkillTestResult.objects.filter(user=user, skill=_normalize_skill(skill)).order_by("-created_at").first()
+
+
+def _split_evenly(total, buckets):
+    base = total // buckets
+    remainder = total % buckets
+    return [base + (1 if index < remainder else 0) for index in range(buckets)]
+
+
+def _combined_question_allocation(skills, total_questions=20):
+    skill_targets = _split_evenly(total_questions, len(skills))
+    difficulty_keys = ["easy", "medium", "hard"]
+    difficulty_targets = dict(zip(difficulty_keys, _split_evenly(total_questions, len(difficulty_keys))))
+    return dict(zip(skills, skill_targets)), difficulty_targets
+
+
+def _pick_combined_questions(skills, total_questions=20):
+    per_skill_target, difficulty_target = _combined_question_allocation(skills, total_questions)
+
+    pools = {}
+    for skill in skills:
+        for difficulty in ["easy", "medium", "hard"]:
+            queryset = list(
+                Question.objects.filter(
+                    type="skill",
+                    category=skill,
+                    difficulty=difficulty,
+                )
+            )
+            random.shuffle(queryset)
+            pools[(skill, difficulty)] = queryset
+
+    selected = []
+    used_ids = set()
+    skill_count = defaultdict(int)
+    difficulty_count = defaultdict(int)
+
+    for difficulty in ["easy", "medium", "hard"]:
+        while difficulty_count[difficulty] < difficulty_target[difficulty]:
+            candidate_skills = sorted(
+                skills,
+                key=lambda item: per_skill_target[item] - skill_count[item],
+                reverse=True,
+            )
+
+            picked = False
+            for skill in candidate_skills:
+                if skill_count[skill] >= per_skill_target[skill]:
+                    continue
+
+                pool = pools.get((skill, difficulty), [])
+                while pool and pool[0].id in used_ids:
+                    pool.pop(0)
+
+                if not pool:
+                    continue
+
+                question = pool.pop(0)
+                selected.append(question)
+                used_ids.add(question.id)
+                skill_count[skill] += 1
+                difficulty_count[difficulty] += 1
+                picked = True
+                break
+
+            if not picked:
+                break
+
+    if len(selected) < total_questions:
+        return []
+
+    random.shuffle(selected)
+    return selected[:total_questions]
 
 
 @api_view(['GET'])
@@ -423,4 +496,186 @@ def submit_skill_test(request):
             "skill": skill,
         },
         message=f"You are {level} in {skill}",
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_combined_skill_test(request):
+    user = request.user
+    skill_params = request.query_params.getlist('skills')
+    if len(skill_params) == 1 and ',' in skill_params[0]:
+        skill_params = [item.strip() for item in skill_params[0].split(',') if item.strip()]
+
+    selected_skills = []
+    seen = set()
+    for skill in skill_params:
+        normalized = _normalize_skill(skill)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        selected_skills.append(normalized)
+
+    if len(selected_skills) < 2:
+        return error_response("Select at least two skills for the combined test.", status_code=400)
+
+    cooldown_by_skill = {}
+    now = timezone.now()
+    for skill in selected_skills:
+        last_attempt = _last_skill_attempt(user, skill)
+        if not last_attempt:
+            continue
+        cooldown_until = last_attempt.created_at + timedelta(hours=24)
+        if now < cooldown_until:
+            remaining_seconds = max(int((cooldown_until - now).total_seconds()), 0)
+            cooldown_by_skill[skill] = {
+                "cooldown": True,
+                "remaining_seconds": remaining_seconds,
+                "cooldown_until": cooldown_until.isoformat(),
+            }
+
+    if cooldown_by_skill:
+        return error_response(
+            "One or more selected skills are on cooldown.",
+            data={"cooldown": True, "cooldown_by_skill": cooldown_by_skill},
+            status_code=429,
+        )
+
+    # Use existing dataset when sufficient; trigger AI generation only for missing
+    # skill+difficulty counts required for a balanced combined test.
+    per_skill_target, _ = _combined_question_allocation(selected_skills, total_questions=20)
+    from .ai_utils import generate_and_save_questions
+
+    for skill in selected_skills:
+        difficulty_targets = dict(zip(["easy", "medium", "hard"], _split_evenly(per_skill_target[skill], 3)))
+
+        for difficulty, minimum_needed in difficulty_targets.items():
+            current_count = Question.objects.filter(type="skill", category=skill, difficulty=difficulty).count()
+            if current_count < minimum_needed:
+                generate_and_save_questions(
+                    skill,
+                    required=minimum_needed,
+                    current_count=current_count,
+                    difficulty_choices=[difficulty],
+                )
+
+    selected_questions = _pick_combined_questions(selected_skills, total_questions=20)
+    if len(selected_questions) < 20:
+        return error_response(
+            "Unable to prepare a fully balanced 20-question combined test. Please retry in a moment.",
+            data={"skills": selected_skills, "questions": []},
+            status_code=503,
+        )
+
+    response_questions = []
+    for question in selected_questions:
+        response_questions.append({
+            "id": question.id,
+            "question": question.question_text,
+            "skill": _normalize_skill(question.category),
+            "difficulty": question.difficulty,
+            "options": {
+                "A": question.option_a,
+                "B": question.option_b,
+                "C": question.option_c,
+                "D": question.option_d,
+            }
+        })
+
+    return success_response(
+        data={
+            "mode": "combined",
+            "skills": selected_skills,
+            "total_questions": 20,
+            "duration_minutes": 20,
+            "questions": response_questions,
+        },
+        message="Combined skill test is ready.",
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_combined_skill_test(request):
+    user = request.user
+    answers = request.data.get("answers", {})
+    incoming_skills = request.data.get("skills", [])
+
+    if not isinstance(answers, dict) or not answers:
+        return error_response("No answers provided", status_code=400)
+
+    if isinstance(incoming_skills, str):
+        incoming_skills = [item.strip() for item in incoming_skills.split(',') if item.strip()]
+
+    selected_skills = []
+    seen = set()
+    for skill in incoming_skills if isinstance(incoming_skills, list) else []:
+        normalized = _normalize_skill(skill)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        selected_skills.append(normalized)
+
+    if len(selected_skills) < 2:
+        return error_response("Select at least two skills for combined submission.", status_code=400)
+
+    now = timezone.now()
+    for skill in selected_skills:
+        last_attempt = _last_skill_attempt(user, skill)
+        if last_attempt and now < (last_attempt.created_at + timedelta(hours=24)):
+            return _cooldown_response(last_attempt)
+
+    questions = list(Question.objects.filter(id__in=answers.keys(), type="skill"))
+    if not questions:
+        return error_response("No valid questions found for submission.", status_code=400)
+
+    score = 0
+    total = len(answers)
+    per_skill = {skill: {"score": 0, "total": 0} for skill in selected_skills}
+
+    for question in questions:
+        question_id = str(question.id)
+        user_answer = answers.get(question_id)
+        skill = _normalize_skill(question.category)
+        if skill in per_skill:
+            per_skill[skill]["total"] += 1
+
+        if user_answer == question.correct_answer:
+            score += 1
+            if skill in per_skill:
+                per_skill[skill]["score"] += 1
+
+    overall_level = get_skill_level(score, max(total, 1))
+
+    per_skill_results = []
+    for skill in selected_skills:
+        skill_score = per_skill[skill]["score"]
+        skill_total = per_skill[skill]["total"]
+        effective_total = max(skill_total, 1)
+        level = get_skill_level(skill_score, effective_total)
+        SkillTestResult.objects.create(
+            user=user,
+            skill=skill,
+            score=skill_score,
+            total=effective_total,
+            level=level,
+        )
+        per_skill_results.append({
+            "skill": skill,
+            "score": skill_score,
+            "total": skill_total,
+            "level": level,
+        })
+
+    return success_response(
+        data={
+            "mode": "combined",
+            "skill": "combined",
+            "skills": selected_skills,
+            "score": score,
+            "total": total,
+            "level": overall_level,
+            "per_skill": per_skill_results,
+        },
+        message="Combined skill test submitted successfully.",
     )

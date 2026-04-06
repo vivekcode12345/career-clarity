@@ -84,9 +84,8 @@ const QuestionCard = ({
                     <span className="text-white text-sm font-bold">✓</span>
                   )}
                 </div>
-                <div>
-                  <div className={`font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}>{option}</div>
-                  <div className={`leading-6 break-words ${isDark ? "text-slate-300" : "text-slate-700"}`}>{question.options[option]}</div>
+                <div className={`leading-6 break-words ${isDark ? "text-slate-100" : "text-slate-800"}`}>
+                  {question.options[option]}
                 </div>
               </div>
             </button>

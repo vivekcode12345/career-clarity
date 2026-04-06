@@ -4,12 +4,22 @@ import QuestionCard from "../components/QuestionCard";
 import TestResultPage from "./TestResultPage";
 import SkillsSelectionPage from "./SkillsSelectionPage";
 import SystemCheckPage from "./SystemCheckPage";
-import { getQuickTest, submitQuickTest, getSkillTest, submitSkillTest, getSkillCooldownStatus, getSkillOptions } from "../services/testService";
+import {
+  getQuickTest,
+  submitQuickTest,
+  getSkillTest,
+  submitSkillTest,
+  getCombinedSkillTest,
+  submitCombinedSkillTest,
+  getSkillCooldownStatus,
+  getSkillOptions,
+} from "../services/testService";
 import { getCurrentUser } from "../services/authService";
 
 const WARNING_DURATION_MS = 2500;
 const QUICK_TEST_DURATION_SECONDS = 10 * 60;
-const SKILL_TEST_DURATION_SECONDS = 20 * 60;
+const SKILL_TEST_DURATION_SECONDS = 15 * 60;
+const COMBINED_SKILL_TEST_DURATION_SECONDS = 20 * 60;
 const FULLSCREEN_EXIT_GRACE_SECONDS = 10;
 const PREPARING_TIP_ROTATION_MS = 2500;
 
@@ -29,6 +39,8 @@ const TestPage = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [selectedSkill, setSelectedSkill] = useState("");
+  const [selectedSkills, setSelectedSkills] = useState([]);
+  const [testMode, setTestMode] = useState("single");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -405,6 +417,15 @@ const TestPage = () => {
 
   const handleSkillSelect = (skill) => {
     setSelectedSkill(skill);
+    setSelectedSkills([]);
+    setTestMode("single");
+    setPage("systemCheck");
+  };
+
+  const handleCombinedSkillSelect = (skills) => {
+    setSelectedSkills(Array.isArray(skills) ? skills : []);
+    setSelectedSkill("");
+    setTestMode("combined");
     setPage("systemCheck");
   };
 
@@ -424,7 +445,11 @@ const TestPage = () => {
         return;
       }
 
-      const skillTestData = await getSkillTest(selectedSkill);
+      const skillTestData =
+        testMode === "combined"
+          ? await getCombinedSkillTest(selectedSkills)
+          : await getSkillTest(selectedSkill);
+
       if (!skillTestData?.questions?.length) {
         setIsPreparingQuestions(false);
         setError(skillTestData?.message || "Failed to generate questions for this skill. Please try another skill or retry.");
@@ -438,7 +463,7 @@ const TestPage = () => {
       setIsPreparingQuestions(false);
       setError("");
       setPage("skillTest");
-      startTimer(SKILL_TEST_DURATION_SECONDS);
+      startTimer(testMode === "combined" ? COMBINED_SKILL_TEST_DURATION_SECONDS : SKILL_TEST_DURATION_SECONDS);
     } catch (err) {
       setIsPreparingQuestions(false);
       const message = err?.response?.data?.message || "Failed to generate skill test questions. Please retry.";
@@ -507,7 +532,10 @@ const TestPage = () => {
       if (page === "skillTest") {
         clearFullscreenExitWarningTimers();
         setShowFullscreenExitWarning(false);
-        const submitResponse = await submitSkillTest(submissionAnswers, selectedSkill);
+        const submitResponse =
+          testMode === "combined"
+            ? await submitCombinedSkillTest(submissionAnswers, selectedSkills)
+            : await submitSkillTest(submissionAnswers, selectedSkill);
         stopTimer();
         await exitFullscreen();
         setResult(submitResponse);
@@ -626,14 +654,21 @@ const TestPage = () => {
   }
 
   if (page === "skillsSelection") {
-    return <SkillsSelectionPage onSkillSelect={handleSkillSelect} cooldownInfo={cooldownInfo} availableSkills={availableSkills} />;
+    return (
+      <SkillsSelectionPage
+        onSkillSelect={handleSkillSelect}
+        onCombinedTestSelect={handleCombinedSkillSelect}
+        cooldownInfo={cooldownInfo}
+        availableSkills={availableSkills}
+      />
+    );
   }
 
   if (page === "systemCheck") {
     return (
       <>
         <SystemCheckPage
-          skillName={selectedSkill}
+          skillName={testMode === "combined" ? "Combined Skill Test" : selectedSkill}
           onCheckComplete={handleSystemCheckComplete}
           onCancel={() => setPage("skillsSelection")}
           isPreparingQuestions={isPreparingQuestions}
@@ -730,8 +765,12 @@ const TestPage = () => {
           <div className="mb-6 rounded-2xl border border-blue-500/40 bg-slate-800/90 p-6 shadow-2xl">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between text-white">
               <div>
-                <h1 className="text-3xl font-bold">🎯 Skill Test - {selectedSkill?.toUpperCase()}</h1>
-                <p className="text-blue-100 mt-1">Security mode enabled • 15 questions</p>
+                <h1 className="text-3xl font-bold">
+                  🎯 {testMode === "combined" ? "Combined Skill Test" : `Skill Test - ${selectedSkill?.toUpperCase()}`}
+                </h1>
+                <p className="text-blue-100 mt-1">
+                  Security mode enabled • {testMode === "combined" ? "20 questions" : "15 questions"} • {testMode === "combined" ? "20" : "15"} minutes
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-xs uppercase tracking-wide text-blue-200">Time remaining</p>

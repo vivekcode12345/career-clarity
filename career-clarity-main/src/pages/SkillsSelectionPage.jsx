@@ -6,9 +6,12 @@ import { useNavigate } from "react-router-dom";
  * Displays available skills after quick test completion
  * User can select a skill to take the skill test for that specific skill
  */
-const SkillsSelectionPage = ({ onSkillSelect, cooldownInfo, availableSkills = [] }) => {
+const SkillsSelectionPage = ({ onSkillSelect, onCombinedTestSelect, cooldownInfo, availableSkills = [] }) => {
   const navigate = useNavigate();
   const [selectedSkill, setSelectedSkill] = useState(null);
+  const [selectedSkills, setSelectedSkills] = useState([]);
+  const [multiSkillMode, setMultiSkillMode] = useState(false);
+  const [startMode, setStartMode] = useState("single");
   const [showWarning, setShowWarning] = useState(false);
   const [hoveredSkillId, setHoveredSkillId] = useState(null);
 
@@ -90,17 +93,48 @@ const SkillsSelectionPage = ({ onSkillSelect, cooldownInfo, availableSkills = []
   });
 
   const handleStartTest = (skill) => {
+    if (multiSkillMode) {
+      return;
+    }
+
     const skillKey = skill.key || skill.name.toLowerCase();
     const skillCooldown = cooldownInfo?.cooldown_by_skill?.[skillKey];
     if (skillCooldown?.cooldown) {
       return;
     }
+    setStartMode("single");
     setSelectedSkill(skillKey);
     setShowWarning(true);
   };
 
+  const toggleSkillSelection = (skillKey) => {
+    if (!multiSkillMode) return;
+
+    const skillCooldown = cooldownInfo?.cooldown_by_skill?.[skillKey];
+    if (skillCooldown?.cooldown) return;
+
+    setSelectedSkills((prev) => {
+      if (prev.includes(skillKey)) {
+        return prev.filter((item) => item !== skillKey);
+      }
+      return [...prev, skillKey];
+    });
+  };
+
+  const handleStartCombinedTest = () => {
+    if (!multiSkillMode || selectedSkills.length < 2) {
+      return;
+    }
+    setStartMode("combined");
+    setShowWarning(true);
+  };
+
   const handleConfirmStart = () => {
-    onSkillSelect(selectedSkill);
+    if (startMode === "combined") {
+      onCombinedTestSelect?.(selectedSkills);
+    } else {
+      onSkillSelect(selectedSkill);
+    }
     setShowWarning(false);
   };
 
@@ -135,7 +169,7 @@ const SkillsSelectionPage = ({ onSkillSelect, cooldownInfo, availableSkills = []
         <div className="text-center mb-6">
           <div className="text-5xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Before You Start: {selectedSkill?.toUpperCase()}
+            Before You Start: {startMode === "combined" ? "Combined Skill Test" : selectedSkill?.toUpperCase()}
           </h2>
           <p className="text-slate-600">Test Guidelines</p>
         </div>
@@ -155,7 +189,11 @@ const SkillsSelectionPage = ({ onSkillSelect, cooldownInfo, availableSkills = []
           </div>
           <div className="flex items-start space-x-3">
             <span className="text-xl">⏱️</span>
-            <p className="text-slate-700">You have 20 minutes to complete 15 questions</p>
+            <p className="text-slate-700">
+              {startMode === "combined"
+                ? "You have 20 minutes to complete 20 combined questions"
+                : "You have 15 minutes to complete 15 questions"}
+            </p>
           </div>
           <div className="flex items-start space-x-3">
             <span className="text-xl">🔒</span>
@@ -191,13 +229,36 @@ const SkillsSelectionPage = ({ onSkillSelect, cooldownInfo, availableSkills = []
           <h1 className="text-4xl font-bold text-slate-900 mb-3">
             🎯 Skill Tests
           </h1>
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <input
+              id="multiSkillMode"
+              type="checkbox"
+              checked={multiSkillMode}
+              onChange={(event) => {
+                const enabled = event.target.checked;
+                setMultiSkillMode(enabled);
+                if (!enabled) {
+                  setSelectedSkills([]);
+                }
+              }}
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label htmlFor="multiSkillMode" className="text-sm font-semibold text-slate-700">
+              Need multiple skills at a time
+            </label>
+          </div>
           {lockedSkillsCount > 0 ? (
             <div className="inline-block rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 text-sm font-semibold">
               🔒 {lockedSkillsCount} skill test{lockedSkillsCount > 1 ? "s are" : " is"} on cooldown. Hover a locked skill to view remaining time.
             </div>
           ) : (
             <p className="text-slate-600 text-lg">
-              Choose a skill to test your knowledge. Each test has 15 questions and 20 minutes.
+              Choose a skill to test your knowledge. Single skill test has 15 questions and 15 minutes.
+            </p>
+          )}
+          {multiSkillMode && (
+            <p className="mt-2 text-sm text-indigo-700 font-semibold">
+              Select at least 2 skills to unlock Combined Test (20 questions • 20 minutes).
             </p>
           )}
         </div>
@@ -231,6 +292,19 @@ const SkillsSelectionPage = ({ onSkillSelect, cooldownInfo, availableSkills = []
               <h3 className="text-2xl font-bold text-slate-900 mb-2">{skill.name}</h3>
               <p className="text-slate-600 mb-4 text-sm">{skill.description}</p>
 
+              {multiSkillMode && (
+                <label className="mb-4 inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700">
+                  <input
+                    type="checkbox"
+                    checked={selectedSkills.includes(skillKey)}
+                    disabled={isLocked}
+                    onChange={() => toggleSkillSelection(skillKey)}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  Select for combined test
+                </label>
+              )}
+
               {/* Stats */}
               <div className="grid grid-cols-3 gap-2 mb-6 py-4 border-t border-b border-slate-200">
                 <div className="text-center">
@@ -250,19 +324,21 @@ const SkillsSelectionPage = ({ onSkillSelect, cooldownInfo, availableSkills = []
               {/* Start Button */}
               <button
                 onClick={() => handleStartTest(skill)}
-                disabled={isLocked}
+                disabled={isLocked || multiSkillMode}
                 className={`w-full font-bold py-3 rounded-lg transition-all shadow-lg ${
-                  isLocked
+                  isLocked || multiSkillMode
                     ? "bg-slate-300 text-slate-600 cursor-not-allowed"
                     : "bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white hover:shadow-xl"
                 }`}
                 title={
                   isLocked
                     ? `Cooldown remaining time: ${formatRemaining(skillCooldown?.remaining_seconds)}`
+                    : multiSkillMode
+                    ? "Disable multiple-skill mode to start individual test"
                     : "Start Test"
                 }
               >
-                {isLocked ? "🔒 Locked" : "Start Test →"}
+                {isLocked ? "🔒 Locked" : multiSkillMode ? "Select via checkbox" : "Start Test →"}
               </button>
 
               {isLocked && hoveredSkillId === skill.id && (
@@ -301,6 +377,17 @@ const SkillsSelectionPage = ({ onSkillSelect, cooldownInfo, availableSkills = []
             className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold py-3 px-8 rounded-lg transition-all shadow-lg"
           >
             💼 Career Recommendations
+          </button>
+          <button
+            onClick={handleStartCombinedTest}
+            disabled={!multiSkillMode || selectedSkills.length < 2}
+            className={`font-bold py-3 px-8 rounded-lg transition-all shadow-lg ${
+              !multiSkillMode || selectedSkills.length < 2
+                ? "bg-slate-300 text-slate-600 cursor-not-allowed"
+                : "bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700"
+            }`}
+          >
+            🧩 Take Combined Test
           </button>
         </div>
       </div>
