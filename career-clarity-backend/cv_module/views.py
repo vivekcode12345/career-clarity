@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .models import CVProfile
-from .utils import extract_text_from_pdf, extract_text_from_image, parse_cv
+from .utils import extract_text_from_pdf, extract_text_from_image, parse_cv, analyze_resume_text
 from accounts.models import Profile
 from test_module.models import TestResult, SkillTestResult
 from .chat_utils import extract_subjects, is_school_student, has_no_cv_intent, extract_high_marks_subjects
@@ -177,6 +177,8 @@ def upload_cv(request):
         existing_interests = profile.interests if isinstance(profile.interests, list) else []
         profile.interests = list(dict.fromkeys(existing_interests + effective_skills))
 
+    resume_analysis = analyze_resume_text(text, effective_skills)
+
     CVProfile.objects.update_or_create(
         user=request.user,
         defaults={
@@ -225,6 +227,7 @@ def upload_cv(request):
         data={
             "skills": effective_skills,
             "strongest_subjects": strongest_subjects if school_student else [],
+            **resume_analysis,
         },
         message=success_message,
     )

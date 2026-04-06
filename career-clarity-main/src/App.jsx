@@ -220,17 +220,17 @@ function App() {
 				<Route
 					path="/cv-upload"
 					element={
-						<GraduateRoute>
+						<PrivateRoute>
 							<CVUpload />
-						</GraduateRoute>
+						</PrivateRoute>
 					}
 				/>
 				<Route
 					path="/cv-analysis"
 					element={
-						<GraduateRoute>
+						<PrivateRoute>
 							<CVAnalysis />
-						</GraduateRoute>
+						</PrivateRoute>
 					}
 				/>
 				<Route path="*" element={<Navigate to="/" replace />} />

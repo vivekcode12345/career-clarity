@@ -26,8 +26,19 @@ function CVAnalysis() {
 	}
 
 	const score = Number(analysis.resumeScore || 0);
-	const scoreLevel = score >= 80 ? "Excellent" : score >= 60 ? "Good" : score >= 40 ? "Fair" : "Needs Work";
+	const scoreLevel = analysis.scoreLabel || (score >= 80 ? "Excellent" : score >= 60 ? "Good" : score >= 40 ? "Fair" : "Needs Work");
 	const scoreColor = score >= 80 ? "emerald" : score >= 60 ? "blue" : score >= 40 ? "orange" : "red";
+	const scoreBreakdown = analysis.scoreBreakdown || {};
+	const analysisSummary = analysis.analysisSummary || "This CV analysis highlights your strongest points and the areas that need improvement.";
+	const strengths = Array.isArray(analysis.strengths) ? analysis.strengths : [];
+	const mistakes = Array.isArray(analysis.mistakes) ? analysis.mistakes : [];
+	const improvements = Array.isArray(analysis.improvementSuggestions) ? analysis.improvementSuggestions : [];
+	const whatToInclude = Array.isArray(analysis.whatToInclude) ? analysis.whatToInclude : [];
+	const technicalTerms = Array.isArray(analysis.technicalTerms) ? analysis.technicalTerms : [];
+	const industryTerms = Array.isArray(analysis.industryTerms) ? analysis.industryTerms : [];
+	const sectionHighlights = Array.isArray(analysis.sectionHighlights) ? analysis.sectionHighlights : [];
+	const contactSignals = Array.isArray(analysis.contactSignals) ? analysis.contactSignals : [];
+	const achievementLines = Array.isArray(analysis.achievementLines) ? analysis.achievementLines : [];
 
 	return (
 		<div className="space-y-8">
@@ -47,7 +58,7 @@ function CVAnalysis() {
 
 			{/* Resume Score Card */}
 			<div className="cc-fade-in rounded-3xl bg-white p-8 shadow-lg" style={{ animationDelay: "100ms" }}>
-				<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+				<div className="grid gap-6 lg:grid-cols-3">
 					{/* Score Display */}
 					<div className={`rounded-2xl bg-gradient-to-br from-${scoreColor}-50 to-${scoreColor}-100 p-6 text-center ring-1 ring-${scoreColor}-200`}>
 						<p className="text-sm font-semibold text-slate-600 uppercase">Resume Score</p>
@@ -58,6 +69,20 @@ function CVAnalysis() {
 								className={`h-full bg-gradient-to-r from-${scoreColor}-500 to-${scoreColor}-600 transition-all duration-500`}
 								style={{ width: `${score}%` }}
 							/>
+						</div>
+					</div>
+
+					<div className="rounded-2xl bg-slate-50 p-6 ring-1 ring-slate-200 lg:col-span-2">
+						<p className="text-sm font-semibold uppercase text-slate-500">Why this score</p>
+						<p className="mt-2 text-sm leading-6 text-slate-700">{analysisSummary}</p>
+
+						<div className="mt-5 grid gap-3 sm:grid-cols-2">
+							{Object.entries(scoreBreakdown).map(([key, value]) => (
+								<div key={key} className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+									<p className="text-xs font-semibold uppercase text-slate-500">{key.replace(/_/g, " ")}</p>
+									<p className="mt-1 text-2xl font-extrabold text-slate-900">{value}</p>
+								</div>
+							))}
 						</div>
 					</div>
 
@@ -77,6 +102,53 @@ function CVAnalysis() {
 						<p className="mt-3 text-3xl font-bold text-orange-600">
 							{analysis.missingSkills?.length || 0}
 						</p>
+					</div>
+				</div>
+			</div>
+
+			{/* Detailed Insights */}
+			<div className="grid gap-6 lg:grid-cols-2">
+				<div className="cc-fade-in rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200" style={{ animationDelay: "120ms" }}>
+					<div className="mb-4 flex items-center gap-2">
+						<div className="text-3xl">⭐</div>
+						<h2 className="text-lg font-bold text-slate-900">Strengths</h2>
+					</div>
+					<ul className="space-y-2 text-sm text-slate-700">
+						{strengths.length > 0 ? strengths.map((item, index) => <li key={index}>• {item}</li>) : <li>No strong points detected yet.</li>}
+					</ul>
+				</div>
+
+				<div className="cc-fade-in rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200" style={{ animationDelay: "130ms" }}>
+					<div className="mb-4 flex items-center gap-2">
+						<div className="text-3xl">⚠️</div>
+						<h2 className="text-lg font-bold text-slate-900">Mistakes / Gaps</h2>
+					</div>
+					<ul className="space-y-2 text-sm text-slate-700">
+						{mistakes.length > 0 ? mistakes.map((item, index) => <li key={index}>• {item}</li>) : <li>No major mistakes detected.</li>}
+					</ul>
+				</div>
+
+				<div className="cc-fade-in rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200" style={{ animationDelay: "140ms" }}>
+					<div className="mb-4 flex items-center gap-2">
+						<div className="text-3xl">💡</div>
+						<h2 className="text-lg font-bold text-slate-900">What to include</h2>
+					</div>
+					<ul className="space-y-2 text-sm text-slate-700">
+						{whatToInclude.length > 0 ? whatToInclude.map((item, index) => <li key={index}>• {item}</li>) : <li>Add projects, metrics, certifications, and clear section headings.</li>}
+					</ul>
+				</div>
+
+				<div className="cc-fade-in rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200" style={{ animationDelay: "150ms" }}>
+					<div className="mb-4 flex items-center gap-2">
+						<div className="text-3xl">🧾</div>
+						<h2 className="text-lg font-bold text-slate-900">Keyword Coverage</h2>
+					</div>
+					<div className="space-y-3 text-sm text-slate-700">
+						<p><span className="font-semibold">Technical terms:</span> {technicalTerms.length > 0 ? technicalTerms.join(", ") : "None detected"}</p>
+						<p><span className="font-semibold">Industry terms:</span> {industryTerms.length > 0 ? industryTerms.join(", ") : "None detected"}</p>
+						<p><span className="font-semibold">Sections:</span> {sectionHighlights.length > 0 ? sectionHighlights.join(", ") : "Not clearly sectioned"}</p>
+						<p><span className="font-semibold">Contact signals:</span> {contactSignals.length > 0 ? contactSignals.join(", ") : "Missing or incomplete"}</p>
+						<p><span className="font-semibold">Achievements:</span> {achievementLines.length > 0 ? `${achievementLines.length} measurable bullet(s)` : "No measurable achievements detected"}</p>
 					</div>
 				</div>
 			</div>

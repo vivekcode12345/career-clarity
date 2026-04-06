@@ -33,9 +33,8 @@ const actionCards = [
 	},
 	{
 		title: "CV Analysis",
-		description: "Upload your CV and get skill-gap insights and career suggestions.",
+		description: "Upload your CV and get detailed analysis, score, and improvement tips.",
 		path: "/cv-upload",
-		onlyGraduate: true,
 		key: "cv",
 	},
 ];
@@ -68,7 +67,6 @@ function Dashboard() {
 	const user = getCurrentUser();
 	const userName = user?.name || "Student";
 	const educationLevel = user?.educationLevel || "Class 12";
-	const isGraduate = educationLevel === "Graduate";
 	const [isLoading, setIsLoading] = useState(true);
 	const [quickTestAttempted, setQuickTestAttempted] = useState(false);
 	const [dashboardSummary, setDashboardSummary] = useState({
@@ -142,9 +140,7 @@ function Dashboard() {
 		}
 		: actionCards[0];
 
-	const visibleCards = [testAction, ...actionCards.slice(1)].filter(
-		(card) => !card.onlyGraduate || isGraduate
-	);
+	const visibleCards = [testAction, ...actionCards.slice(1)];
 
 	const hasProfileData = Boolean(dashboardSummary?.stats?.has_profile_data);
 	const hasPersonalizationSignal = Boolean(dashboardSummary?.stats?.has_personalization_signal);

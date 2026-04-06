@@ -6,6 +6,7 @@ import pdfplumber
 import os
 import io
 import sys
+import re
 from contextlib import contextmanager
 
 # Force UTF-8 encoding for the process
@@ -317,4 +318,306 @@ def parse_cv(text):
 
     return {
         "skills": found_skills,
+    }
+
+
+RESUME_SECTION_HEADINGS = [
+    "summary",
+    "profile",
+    "objective",
+    "experience",
+    "work experience",
+    "professional experience",
+    "projects",
+    "project experience",
+    "achievements",
+    "accomplishments",
+    "education",
+    "skills",
+    "certifications",
+    "courses",
+    "internships",
+    "training",
+    "awards",
+]
+
+ACTION_VERBS = [
+    "built",
+    "developed",
+    "designed",
+    "led",
+    "managed",
+    "implemented",
+    "improved",
+    "optimized",
+    "created",
+    "analyzed",
+    "collaborated",
+    "deployed",
+    "delivered",
+    "reduced",
+    "increased",
+    "streamlined",
+    "launched",
+    "automated",
+    "organized",
+]
+
+INDUSTRY_TERMS = [
+    "stakeholder",
+    "business",
+    "strategy",
+    "analytics",
+    "operations",
+    "project management",
+    "market research",
+    "product management",
+    "customer",
+    "compliance",
+    "quality assurance",
+    "research",
+    "reporting",
+    "presentations",
+    "team collaboration",
+    "problem solving",
+    "communication",
+    "leadership",
+    "cross-functional",
+    "kpi",
+    "okr",
+    "roi",
+]
+
+
+def _safe_lower(text):
+    return (text or "").strip().lower()
+
+
+def _count_term_hits(text, terms):
+    lowered = _safe_lower(text)
+    hits = set()
+    for term in terms:
+        pattern = r"\b" + re.escape(term.lower()) + r"\b"
+        if re.search(pattern, lowered):
+            hits.add(term.lower())
+    return sorted(hits)
+
+
+def _extract_contact_signals(text):
+    lowered = _safe_lower(text)
+    signals = []
+    if re.search(r"\b\d{10}\b", lowered) or re.search(r"\+?\d[\d\s\-]{8,}\d", lowered):
+        signals.append("phone number")
+    if "@" in lowered:
+        signals.append("email address")
+    if "linkedin" in lowered:
+        signals.append("linkedin profile")
+    if "github" in lowered:
+        signals.append("github profile")
+    return signals
+
+
+def _split_bullets(text):
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    bullet_lines = [line for line in lines if line.startswith(("-", "•", "*", "→"))]
+    return lines, bullet_lines
+
+
+def _sentence_quality_score(doc):
+    sentences = [sent.text.strip() for sent in getattr(doc, "sents", []) if sent.text.strip()]
+    if not sentences:
+        return 45, ["Add complete sentences in a clear sectioned format."]
+
+    penalties = 0
+    suggestions = []
+    lowercase_starts = 0
+    long_sentences = 0
+    punctuation_gaps = 0
+
+    for sentence in sentences:
+        first_alpha = next((char for char in sentence if char.isalpha()), "")
+        if first_alpha and first_alpha.islower():
+            lowercase_starts += 1
+        word_count = len(sentence.split())
+        if word_count > 28:
+            long_sentences += 1
+        if not sentence.endswith((".", "!", "?", ":", ";")) and word_count > 5:
+            punctuation_gaps += 1
+
+    if lowercase_starts:
+        penalties += min(15, lowercase_starts * 4)
+        suggestions.append("Start sentences with capital letters.")
+    if long_sentences:
+        penalties += min(12, long_sentences * 3)
+        suggestions.append("Break very long sentences into shorter, clearer points.")
+    if punctuation_gaps:
+        penalties += min(10, punctuation_gaps * 2)
+        suggestions.append("Add punctuation to improve readability.")
+
+    score = max(35, 100 - penalties)
+    return score, suggestions
+
+
+def analyze_resume_text(text, extracted_skills=None):
+    safe_print("[DEBUG] Starting analyze_resume_text...")
+
+    text = (text or "")[:9000]
+    extracted_skills = [str(skill).strip().lower() for skill in (extracted_skills or []) if str(skill).strip()]
+
+    doc = nlp(text) if text.strip() else nlp.make_doc("")
+    cleaned_text = _safe_lower(text)
+    lines, bullet_lines = _split_bullets(text)
+
+    skill_hits = sorted(set(extracted_skills))
+    technical_terms = _count_term_hits(cleaned_text, SKILLS_LIST)
+    industry_terms = _count_term_hits(cleaned_text, INDUSTRY_TERMS)
+
+    section_hits = [heading for heading in RESUME_SECTION_HEADINGS if re.search(rf"\b{re.escape(heading)}\b", cleaned_text)]
+    contact_signals = _extract_contact_signals(text)
+
+    years_experience = len(re.findall(r"\b\d+\+?\s*(?:years?|yrs?)\b", cleaned_text))
+    internship_mentions = len(re.findall(r"\bintern(?:ship|s|ed)?\b", cleaned_text))
+    work_mentions = len(re.findall(r"\bexperience\b|\bworked\b|\bemployed\b|\bfreelance\b", cleaned_text))
+
+    action_verbs_found = [verb for verb in ACTION_VERBS if re.search(rf"\b{re.escape(verb)}\b", cleaned_text)]
+    metric_mentions = len(re.findall(r"\b\d+(?:\.\d+)?%\b|\b\d+(?:\.\d+)?\b|₹|\$|\bmln\b|\bmillion\b", cleaned_text))
+    achievement_lines = [
+        line for line in lines
+        if re.search(r"\b\d+(?:\.\d+)?%\b|\b\d+(?:\.\d+)?\b|₹|\$", line) and any(verb in _safe_lower(line) for verb in ACTION_VERBS)
+    ]
+
+    grammar_score, grammar_suggestions = _sentence_quality_score(doc)
+
+    structure_score = 40
+    if section_hits:
+        structure_score += min(30, len(section_hits) * 5)
+    if bullet_lines:
+        structure_score += min(10, len(bullet_lines) * 2)
+    if contact_signals:
+        structure_score += min(10, len(contact_signals) * 3)
+    structure_score = min(100, structure_score)
+
+    skills_score = min(25, len(skill_hits) * 3)
+    technical_score = min(20, (len(technical_terms) + len(industry_terms)) * 2)
+
+    experience_score = 18
+    experience_score += min(8, years_experience * 4)
+    experience_score += min(6, internship_mentions * 2)
+    experience_score += min(6, work_mentions)
+    if section_hits and any(hit in section_hits for hit in ["experience", "work experience", "professional experience", "projects", "internships"]):
+        experience_score += 4
+    experience_score = min(20, experience_score)
+
+    achievement_score = 5
+    achievement_score += min(8, len(achievement_lines) * 4)
+    achievement_score += min(4, metric_mentions)
+    if action_verbs_found:
+        achievement_score += 2
+    achievement_score = min(15, achievement_score)
+
+    overall_score = int(round(skills_score + technical_score + experience_score + achievement_score + ((grammar_score / 100) * 10) + ((structure_score / 100) * 10)))
+    overall_score = max(0, min(100, overall_score))
+
+    summary_points = []
+    if skill_hits:
+        summary_points.append(f"Detected {len(skill_hits)} relevant skills or keywords.")
+    if technical_terms or industry_terms:
+        summary_points.append(f"Found {len(technical_terms) + len(industry_terms)} technical and industry terms.")
+    if achievement_lines:
+        summary_points.append(f"Found {len(achievement_lines)} achievement-focused bullet points with measurable impact.")
+    if section_hits:
+        summary_points.append(f"Resume contains {len(section_hits)} clear section headers.")
+
+    strengths = []
+    if skill_hits:
+        strengths.append(f"Relevant skills detected: {', '.join(skill_hits[:8])}")
+    if technical_terms or industry_terms:
+        strengths.append("Uses role-relevant technical or industry keywords.")
+    if achievement_lines:
+        strengths.append("Highlights measurable achievements in bullet points.")
+    if section_hits:
+        strengths.append("Has clear resume sections and structure.")
+    if contact_signals:
+        strengths.append(f"Contains contact details such as {', '.join(contact_signals[:3])}.")
+
+    mistakes = []
+    if grammar_score < 75:
+        mistakes.append("Some sentences may be too long, incomplete, or not well punctuated.")
+    if len(skill_hits) < 5:
+        mistakes.append("Not enough skills or keywords are highlighted in the CV.")
+    if not achievement_lines:
+        mistakes.append("Achievements are not clearly written with measurable impact.")
+    if len(section_hits) < 4:
+        mistakes.append("The CV needs clearer section headings like Summary, Experience, Projects, and Skills.")
+    if not any(term in cleaned_text for term in ["intern", "project", "experience", "worked"]):
+        mistakes.append("Work experience or project depth is not obvious enough.")
+
+    improvement_suggestions = []
+    if len(skill_hits) < 5:
+        improvement_suggestions.append("Add more relevant technical and role-specific skills naturally inside project or experience bullets.")
+    if not achievement_lines:
+        improvement_suggestions.append("Rewrite responsibilities as outcomes using numbers, percentages, or impact statements.")
+    if grammar_score < 75:
+        improvement_suggestions.append("Fix grammar, capitalize sentence starts, and keep each bullet concise.")
+    if len(section_hits) < 4:
+        improvement_suggestions.append("Use clear sections such as Summary, Education, Experience, Projects, Skills, and Certifications.")
+    if not contact_signals:
+        improvement_suggestions.append("Include complete contact details like email, phone number, LinkedIn, and GitHub where relevant.")
+    if not technical_terms and not industry_terms:
+        improvement_suggestions.append("Add domain keywords for your target role so ATS systems can match your CV better.")
+
+    what_to_include = [
+        "A short professional summary",
+        "Skills matched to the target job",
+        "Projects, internships, or work experience with outcomes",
+        "Numbers, percentages, or results wherever possible",
+        "Relevant certifications, awards, or achievements",
+    ]
+
+    score_breakdown = {
+        "skills": skills_score,
+        "technical_terms": technical_score,
+        "experience": experience_score,
+        "achievements": achievement_score,
+        "grammar": int(round((grammar_score / 100) * 10)),
+        "structure": int(round((structure_score / 100) * 10)),
+    }
+
+    if overall_score >= 80:
+        score_label = "Excellent"
+    elif overall_score >= 60:
+        score_label = "Good"
+    elif overall_score >= 40:
+        score_label = "Fair"
+    else:
+        score_label = "Needs Work"
+
+    if overall_score >= 80:
+        suggested_careers = ["Software Developer", "Data Analyst", "Product Analyst"]
+    elif overall_score >= 60:
+        suggested_careers = ["Associate Analyst", "Junior Developer", "Operations Executive"]
+    elif overall_score >= 40:
+        suggested_careers = ["Internship roles", "Entry-level support roles", "Trainee programs"]
+    else:
+        suggested_careers = ["Build a stronger CV first", "Add projects and internships", "Work on resume structure"]
+
+    detailed_overview = " ".join(summary_points) if summary_points else "The CV contains limited detail. Add stronger sections, achievements, and target-role keywords."
+
+    safe_print(f"[DEBUG] CV score calculated: {overall_score}")
+    return {
+        "resumeScore": overall_score,
+        "scoreLabel": score_label,
+        "scoreBreakdown": score_breakdown,
+        "analysisSummary": detailed_overview,
+        "strengths": strengths,
+        "mistakes": mistakes,
+        "improvementSuggestions": improvement_suggestions,
+        "whatToInclude": what_to_include,
+        "suggestedCareers": suggested_careers,
+        "extractedSkills": skill_hits,
+        "technicalTerms": technical_terms,
+        "industryTerms": industry_terms,
+        "sectionHighlights": section_hits,
+        "contactSignals": contact_signals,
+        "achievementLines": achievement_lines,
     }

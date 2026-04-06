@@ -1,14 +1,11 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
-import { getCurrentUser } from "../services/authService";
 import { uploadCV } from "../services/resumeService";
 
 function CVUpload() {
 	const inputRef = useRef(null);
 	const navigate = useNavigate();
-	const user = getCurrentUser();
-	const isGraduate = user?.educationLevel === "Graduate";
 
 	const [selectedFile, setSelectedFile] = useState(null);
 	const [isUploading, setIsUploading] = useState(false);
@@ -74,27 +71,6 @@ function CVUpload() {
 			setIsUploading(false);
 		}
 	};
-
-	if (!isGraduate) {
-		return (
-			<div className="cc-fade-in space-y-8">
-				<div className="rounded-3xl bg-gradient-to-br from-amber-600 to-red-600 p-8 text-white shadow-xl sm:p-10">
-					<div className="text-5xl mb-4">🔒</div>
-					<h1 className="text-3xl font-extrabold">Access Restricted</h1>
-					<p className="mt-3 text-lg text-amber-100">
-						This feature is exclusively for graduates. Complete your profile education level update to access CV analysis.
-					</p>
-				</div>
-
-				<Link
-					to="/dashboard"
-					className="inline-block rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700"
-				>
-					← Back to Dashboard
-				</Link>
-			</div>
-		);
-	}
 
 	return (
 		<div className="space-y-8">

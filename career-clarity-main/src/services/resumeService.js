@@ -8,13 +8,34 @@ function normalizeCVAnalysis(payload) {
 	if (
 		Array.isArray(payload.extractedSkills) ||
 		Array.isArray(payload.missingSkills) ||
-		Array.isArray(payload.suggestedCareers)
+		Array.isArray(payload.suggestedCareers) ||
+		typeof payload.resumeScore === "number" ||
+		typeof payload.scoreBreakdown === "object"
 	) {
-		return payload;
+		return {
+			extractedSkills: Array.isArray(payload.extractedSkills) ? payload.extractedSkills : Array.isArray(payload.skills) ? payload.skills : [],
+			skills: Array.isArray(payload.skills) ? payload.skills : Array.isArray(payload.extractedSkills) ? payload.extractedSkills : [],
+			missingSkills: Array.isArray(payload.missingSkills) ? payload.missingSkills : [],
+			suggestedCareers: Array.isArray(payload.suggestedCareers) ? payload.suggestedCareers : [],
+			resumeScore: typeof payload.resumeScore === "number" ? payload.resumeScore : Number(payload.score || 0),
+			scoreLabel: payload.scoreLabel || payload.score_label || "",
+			scoreBreakdown: payload.scoreBreakdown || {},
+			analysisSummary: payload.analysisSummary || payload.summary || "",
+			strengths: Array.isArray(payload.strengths) ? payload.strengths : [],
+			mistakes: Array.isArray(payload.mistakes) ? payload.mistakes : [],
+			improvementSuggestions: Array.isArray(payload.improvementSuggestions) ? payload.improvementSuggestions : [],
+			whatToInclude: Array.isArray(payload.whatToInclude) ? payload.whatToInclude : [],
+			technicalTerms: Array.isArray(payload.technicalTerms) ? payload.technicalTerms : [],
+			industryTerms: Array.isArray(payload.industryTerms) ? payload.industryTerms : [],
+			sectionHighlights: Array.isArray(payload.sectionHighlights) ? payload.sectionHighlights : [],
+			contactSignals: Array.isArray(payload.contactSignals) ? payload.contactSignals : [],
+			achievementLines: Array.isArray(payload.achievementLines) ? payload.achievementLines : [],
+			uploadMessage: typeof payload.uploadMessage === "string" ? payload.uploadMessage : typeof payload.message === "string" ? payload.message : "Document uploaded successfully.",
+		};
 	}
 
 	const extractedSkills = Array.isArray(payload.skills) ? payload.skills : [];
-	const resumeScore = extractedSkills.length > 0 ? Math.min(95, 55 + extractedSkills.length * 7) : 55;
+	const resumeScore = typeof payload.resumeScore === "number" ? payload.resumeScore : Number(payload.score || 0);
 	const uploadMessage = typeof payload.uploadMessage === "string" && payload.uploadMessage.trim().length > 0
 		? payload.uploadMessage.trim()
 		: typeof payload.message === "string" && payload.message.trim().length > 0
@@ -28,11 +49,22 @@ function normalizeCVAnalysis(payload) {
 		missingSkills: [],
 		suggestedCareers: ["Career recommendations are being prepared based on your profile."],
 		resumeScore,
+		scoreLabel: "",
+		scoreBreakdown: {},
+		analysisSummary: "",
+		strengths: [],
+		mistakes: [],
 		improvementSuggestions: [
 			"Add measurable achievements for each project or internship",
 			"Include certifications and relevant coursework",
 			"Tailor your CV summary to the target role",
 		],
+		whatToInclude: [],
+		technicalTerms: [],
+		industryTerms: [],
+		sectionHighlights: [],
+		contactSignals: [],
+		achievementLines: [],
 	};
 }
 
