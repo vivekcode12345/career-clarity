@@ -21,14 +21,34 @@ import CVAnalysis from "./pages/CVAnalysis";
 import Chatbot from "./components/Chatbot";
 import { isAuthenticated, isGraduateUser, syncCurrentUser } from "./services/authService";
 import { playClickSound } from "./utils/sound";
+import { AUTO_SCROLL_SETTINGS_EVENT, getAutoScrollEnabled } from "./utils/autoScroll";
+
+const AUTO_SCROLL_SPEED_PX_PER_SECOND = 22;
+const AUTO_SCROLL_RESUME_DELAY_MS = 1500;
+const AUTO_SCROLL_TICK_MS = 50;
+const AUTO_SCROLL_WHEEL_THRESHOLD = 4;
 
 function AppLayout({ children }) {
   const location = useLocation();
   const [isFullscreenActive, setIsFullscreenActive] = useState(Boolean(document.fullscreenElement));
+	const [autoScrollEnabled, setAutoScrollEnabled] = useState(getAutoScrollEnabled());
 
 	useEffect(() => {
 		window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 	}, [location.pathname, location.search]);
+
+	useEffect(() => {
+		const syncAutoScroll = () => {
+			setAutoScrollEnabled(getAutoScrollEnabled());
+		};
+
+		window.addEventListener(AUTO_SCROLL_SETTINGS_EVENT, syncAutoScroll);
+		window.addEventListener("storage", syncAutoScroll);
+		return () => {
+			window.removeEventListener(AUTO_SCROLL_SETTINGS_EVENT, syncAutoScroll);
+			window.removeEventListener("storage", syncAutoScroll);
+		};
+	}, []);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -66,6 +86,78 @@ function AppLayout({ children }) {
 
   const isTestRoute = location.pathname === "/quick-test" || location.pathname === "/test";
 	const shouldHideChrome = isTestRoute;
+
+	useEffect(() => {
+		if (!autoScrollEnabled || shouldHideChrome) {
+			return;
+		}
+
+		const scroller = document.scrollingElement || document.documentElement;
+		let pauseUntil = Date.now() + AUTO_SCROLL_RESUME_DELAY_MS;
+		const stepPerTick = (AUTO_SCROLL_SPEED_PX_PER_SECOND * AUTO_SCROLL_TICK_MS) / 1000;
+
+		const pauseAutoScroll = () => {
+			pauseUntil = Date.now() + AUTO_SCROLL_RESUME_DELAY_MS;
+		};
+
+		const onWheel = (event) => {
+			if (Math.abs(event.deltaY) < AUTO_SCROLL_WHEEL_THRESHOLD && Math.abs(event.deltaX) < AUTO_SCROLL_WHEEL_THRESHOLD) {
+				return;
+			}
+			pauseAutoScroll();
+		};
+
+		const onKeyDown = () => {
+			pauseAutoScroll();
+		};
+
+		const onPointerOrMouseDown = () => {
+			pauseAutoScroll();
+		};
+
+		const onTouchStart = () => {
+			pauseAutoScroll();
+		};
+
+		window.addEventListener("wheel", onWheel, { passive: true });
+		window.addEventListener("keydown", onKeyDown, { passive: true });
+		window.addEventListener("pointerdown", onPointerOrMouseDown, { passive: true });
+		window.addEventListener("mousedown", onPointerOrMouseDown, { passive: true });
+		window.addEventListener("touchstart", onTouchStart, { passive: true });
+
+		const intervalId = window.setInterval(() => {
+			if (document.hidden) {
+				return;
+			}
+
+			if (Date.now() < pauseUntil) {
+				return;
+			}
+
+			const maxScrollTop = Math.max(0, scroller.scrollHeight - window.innerHeight);
+			if (maxScrollTop <= 1) {
+				return;
+			}
+
+			const currentTop = scroller.scrollTop;
+			if (currentTop >= maxScrollTop - 1) {
+				scroller.scrollTop = 0;
+				pauseUntil = Date.now() + AUTO_SCROLL_RESUME_DELAY_MS;
+				return;
+			}
+
+			scroller.scrollTop = Math.min(maxScrollTop, currentTop + stepPerTick);
+		}, AUTO_SCROLL_TICK_MS);
+
+		return () => {
+			window.clearInterval(intervalId);
+			window.removeEventListener("wheel", onWheel);
+			window.removeEventListener("keydown", onKeyDown);
+			window.removeEventListener("pointerdown", onPointerOrMouseDown);
+			window.removeEventListener("mousedown", onPointerOrMouseDown);
+			window.removeEventListener("touchstart", onTouchStart);
+		};
+	}, [autoScrollEnabled, shouldHideChrome, location.pathname, location.search]);
 
   return (
 		<div className="relative min-h-screen overflow-x-hidden bg-slate-50 text-slate-800">

@@ -18,6 +18,7 @@ import {
 	playSuccessSound,
 	playErrorSound,
 } from "../utils/sound";
+import { getAutoScrollEnabled, setAutoScrollEnabled } from "../utils/autoScroll";
 
 function Settings() {
 	const navigate = useNavigate();
@@ -36,6 +37,7 @@ function Settings() {
 		exam: true,
 	});
 	const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled());
+	const [autoScrollEnabled, setAutoScrollEnabledState] = useState(getAutoScrollEnabled());
 
 	const [passwordForm, setPasswordForm] = useState({
 		currentPassword: "",
@@ -205,6 +207,14 @@ function Settings() {
 		}
 	};
 
+	const handleToggleAutoScroll = (enabled) => {
+		const value = setAutoScrollEnabled(enabled);
+		setAutoScrollEnabledState(value);
+		if (soundEnabled) {
+			playClickSound();
+		}
+	};
+
 	const messageClass = (status) =>
 		status?.type === "success"
 			? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -321,6 +331,24 @@ function Settings() {
 							type="checkbox"
 							checked={soundEnabled}
 							onChange={(event) => handleToggleSound(event.target.checked)}
+							className="h-4 w-4 accent-indigo-600"
+						/>
+					</label>
+				</div>
+			</section>
+
+			<section className="cc-fade-in rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-200" style={{ animationDelay: "210ms" }}>
+				<h2 className="text-xl font-bold text-slate-900">🖱️ Auto Scroll</h2>
+				<div className="mt-4">
+					<label className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 p-3">
+						<div>
+							<p className="text-sm font-semibold text-slate-800">Enable Slow Auto Scroll</p>
+							<p className="text-xs text-slate-500">Automatically scrolls pages slowly; pauses when you touch mouse/touchpad/keyboard and resumes after idle.</p>
+						</div>
+						<input
+							type="checkbox"
+							checked={autoScrollEnabled}
+							onChange={(event) => handleToggleAutoScroll(event.target.checked)}
 							className="h-4 w-4 accent-indigo-600"
 						/>
 					</label>
