@@ -5,12 +5,12 @@ from datetime import timedelta
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / '.env', override=True)
 
 # Also load workspace-level .env if present (useful in local setups).
 PROJECT_ROOT_ENV = BASE_DIR.parent / '.env'
 if PROJECT_ROOT_ENV.exists():
-    load_dotenv(PROJECT_ROOT_ENV)
+    load_dotenv(PROJECT_ROOT_ENV, override=True)
 
 LOG_DIR = BASE_DIR / 'logs'
 LOG_DIR.mkdir(exist_ok=True)
@@ -22,7 +22,7 @@ GOOGLE_CLIENT_ID = (
     or ''
 ).strip()
 
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = (os.environ.get('DEBUG', 'True') or 'True').strip().lower() in {'1', 'true', 'yes', 'on'}
 
 def _csv_env(name, default=""):
     raw_value = os.environ.get(name, default)
@@ -115,7 +115,25 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+if DEBUG:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
