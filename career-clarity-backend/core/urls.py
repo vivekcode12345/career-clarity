@@ -1,10 +1,12 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from prediction_module.views import get_roadmap, get_colleges, get_college_details, get_dashboard_summary
 from accounts.views import preferences_api, change_password_api, reset_tests_api, reset_recommendations_api
 
 urlpatterns = [
+    path('', lambda request: JsonResponse({"status": "ok", "message": "Career Clarity backend is running", "api": "/api/cv/"})),
     path('admin/', admin.site.urls),
 
     path('api/token/', TokenObtainPairView.as_view()),
