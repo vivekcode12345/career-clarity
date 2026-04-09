@@ -179,6 +179,15 @@ CORS_ALLOWED_ORIGINS = _csv_env(
     "http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:5180,http://localhost:5180,http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1:3000,http://localhost:3000",
 )
 
+# Allow Vercel preview/production subdomains without requiring manual updates
+# for every new deployment URL.
+CORS_ALLOWED_ORIGIN_REGEXES = _csv_env(
+    "CORS_ALLOWED_ORIGIN_REGEXES",
+    r"https://.*\.vercel\.app",
+)
+
+CORS_ALLOW_CREDENTIALS = True
+
 CSRF_TRUSTED_ORIGINS = _csv_env(
     "CSRF_TRUSTED_ORIGINS",
     "http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:5180,http://localhost:5180,http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1:3000,http://localhost:3000",
