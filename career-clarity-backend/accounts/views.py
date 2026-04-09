@@ -100,13 +100,17 @@ def _send_otp_email(email, purpose, otp_code):
         f"This code is valid for 10 minutes.\n"
         f"If you did not request this, ignore this email."
     )
-    send_mail(
-        subject=subject,
-        message=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[email],
-        fail_silently=False,
-    )
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+    except Exception as e:
+        logger.warning("Failed to send OTP email to %s: %s", email, str(e))
+        # Continue without raising - OTP is stored in database regardless
 
 
 def _store_otp(email, purpose, user=None, payload=None):
