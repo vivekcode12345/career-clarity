@@ -5,7 +5,7 @@ services:
     rootDir: career-clarity-backend
     buildCommand: pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput
     startCommand: gunicorn core.wsgi:application --bind 0.0.0.0:$PORT
-    healthCheckPath: /api/cv/
+    healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9

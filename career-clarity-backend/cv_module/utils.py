@@ -1,4 +1,3 @@
-import spacy
 import os
 import io
 import sys
@@ -52,6 +51,8 @@ def _build_nlp():
     matcher-based skill extraction, and sentence splitting via a sentencizer.
     """
     global _nlp_uses_fallback
+
+    import spacy
 
     try:
         return spacy.load("en_core_web_sm")

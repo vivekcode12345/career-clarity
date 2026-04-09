@@ -129,6 +129,7 @@ def upload_cv(request):
         )
 
         school_student = is_school_student(profile.education_level)
+        analysis = {}
 
         # Dedicated marks-card flow for school students (no CV parser dependency).
         if school_student:
@@ -138,14 +139,8 @@ def upload_cv(request):
             strongest_subjects = []
             try:
                 data = parse_cv(text)
-                analysis = analyze_resume_text(text, data.get("skills", []))
                 skill_candidates = []
-                for source in (
-                    data.get("skills", []),
-                    analysis.get("extractedSkills", []),
-                    analysis.get("technicalTerms", []),
-                    analysis.get("industryTerms", []),
-                ):
+                for source in (data.get("skills", []),):
                     if isinstance(source, list):
                         skill_candidates.extend(source)
 
@@ -159,6 +154,27 @@ def upload_cv(request):
 
             if not effective_skills:
                 effective_skills = extract_keyword_skills(text, limit=25)
+
+        try:
+            analysis = analyze_resume_text(text, effective_skills)
+        except Exception:
+            analysis = {
+                "resumeScore": 0 if not text.strip() else min(30, 5 + len(effective_skills) * 2),
+                "scoreLabel": "Needs Work",
+                "scoreBreakdown": {},
+                "analysisSummary": "Unable to generate a detailed analysis right now.",
+                "strengths": [],
+                "mistakes": [],
+                "improvementSuggestions": [],
+                "whatToInclude": [],
+                "suggestedCareers": [],
+                "extractedSkills": effective_skills,
+                "technicalTerms": [],
+                "industryTerms": [],
+                "sectionHighlights": [],
+                "contactSignals": [],
+                "achievementLines": [],
+            }
 
         if school_student and effective_skills:
             existing_interests = profile.interests if isinstance(profile.interests, list) else []
@@ -185,6 +201,21 @@ def upload_cv(request):
             "success": True,
             "message": success_message,
             "skills": effective_skills,
+            "resumeScore": analysis.get("resumeScore", 0),
+            "scoreLabel": analysis.get("scoreLabel", ""),
+            "scoreBreakdown": analysis.get("scoreBreakdown", {}),
+            "analysisSummary": analysis.get("analysisSummary", ""),
+            "strengths": analysis.get("strengths", []),
+            "mistakes": analysis.get("mistakes", []),
+            "improvementSuggestions": analysis.get("improvementSuggestions", []),
+            "whatToInclude": analysis.get("whatToInclude", []),
+            "suggestedCareers": analysis.get("suggestedCareers", []),
+            "extractedSkills": analysis.get("extractedSkills", effective_skills),
+            "technicalTerms": analysis.get("technicalTerms", []),
+            "industryTerms": analysis.get("industryTerms", []),
+            "sectionHighlights": analysis.get("sectionHighlights", []),
+            "contactSignals": analysis.get("contactSignals", []),
+            "achievementLines": analysis.get("achievementLines", []),
             "strongest_subjects": strongest_subjects if school_student else [],
         })
     except Exception as exc:
