@@ -28,6 +28,7 @@ def suppress_stdout_stderr():
 
 # Lazy load OCR reader
 _ocr_reader = None
+_nlp_uses_fallback = False
 
 def get_ocr_reader():
     global _ocr_reader
@@ -37,14 +38,30 @@ def get_ocr_reader():
         _ocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
     return _ocr_reader
 
-# Load NLP model
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    raise RuntimeError(
-        "spaCy model 'en_core_web_sm' is not installed. "
-        "Run: python -m spacy download en_core_web_sm"
-    )
+def _build_nlp():
+    """Load the spaCy pipeline, falling back to a lightweight blank model.
+
+    The blank pipeline keeps the app running in production even when the
+    `en_core_web_sm` package is unavailable. It still supports tokenization,
+    matcher-based skill extraction, and sentence splitting via a sentencizer.
+    """
+    global _nlp_uses_fallback
+
+    try:
+        return spacy.load("en_core_web_sm")
+    except OSError:
+        _nlp_uses_fallback = True
+        fallback_nlp = spacy.blank("en")
+        if "sentencizer" not in fallback_nlp.pipe_names:
+            fallback_nlp.add_pipe("sentencizer")
+        safe_print(
+            "[WARN] spaCy model 'en_core_web_sm' is not installed. "
+            "Using a lightweight fallback pipeline."
+        )
+        return fallback_nlp
+
+
+nlp = _build_nlp()
 
 def safe_print(msg):
     """Safely print to console even if encoding doesn't support characters."""
