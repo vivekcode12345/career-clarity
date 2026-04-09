@@ -106,10 +106,10 @@ def _send_otp_email(email, purpose, otp_code):
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
-            fail_silently=False,
+            fail_silently=True,
         )
     except Exception as e:
-        logger.warning("Failed to send OTP email to %s: %s", email, str(e))
+        logger.exception("Failed to send OTP email to %s: %s", email, str(e))
         # Continue without raising - OTP is stored in database regardless
 
 
