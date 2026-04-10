@@ -51,10 +51,17 @@ function GoogleAuthButton({ onCredential, onError, mode = "signin" }) {
 
 		const initGoogleAuth = async () => {
 			try {
-				const config = await getGoogleAuthConfig();
-				const serverClientId = String(config?.googleClientId || "").trim();
-				if (serverClientId) {
-					clientIdRef.current = serverClientId;
+				try {
+					const config = await getGoogleAuthConfig();
+					const serverClientId = String(config?.googleClientId || "").trim();
+					if (serverClientId) {
+						clientIdRef.current = serverClientId;
+					}
+				} catch {
+					if (!clientIdRef.current) {
+						onErrorRef.current?.("Google Sign-In config API is unreachable and no local Google client ID is set.");
+						return;
+					}
 				}
 
 				if (!clientIdRef.current) {
