@@ -4,7 +4,7 @@ export const AUTO_SCROLL_SETTINGS_EVENT = "cc:auto-scroll-changed";
 export function getAutoScrollEnabled() {
 	const stored = localStorage.getItem(AUTO_SCROLL_KEY);
 	if (stored === null) {
-		return true;
+		return false;
 	}
 	return stored === "true";
 }

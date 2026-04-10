@@ -44,9 +44,10 @@ function GoogleAuthButton({ onCredential, onError, mode = "signin" }) {
 
 		const initGoogleAuth = async () => {
 			try {
-				if (!clientIdRef.current) {
-					const config = await getGoogleAuthConfig();
-					clientIdRef.current = String(config?.googleClientId || "").trim();
+				const config = await getGoogleAuthConfig();
+				const serverClientId = String(config?.googleClientId || "").trim();
+				if (serverClientId) {
+					clientIdRef.current = serverClientId;
 				}
 
 				if (!clientIdRef.current) {
