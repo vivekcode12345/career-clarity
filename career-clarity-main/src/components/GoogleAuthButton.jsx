@@ -63,6 +63,10 @@ function GoogleAuthButton({ onCredential, onError, mode = "signin" }) {
 					client_id: clientIdRef.current,
 					scope: "openid email profile",
 					prompt: "consent",
+					error_callback: (error) => {
+						const reason = error?.message || error?.type || "Unknown Google OAuth error";
+						onError?.(`Google authorization failed: ${reason}`);
+					},
 					callback: (response) => {
 						if (response?.error) {
 							const reason = response.error_description || response.error || "Google authorization failed.";
@@ -98,8 +102,9 @@ function GoogleAuthButton({ onCredential, onError, mode = "signin" }) {
 
 		try {
 			tokenClientRef.current.requestAccessToken({ prompt: "consent" });
-		} catch {
-			onError?.("Could not start Google Sign-In. Check authorized JavaScript origin and retry.");
+		} catch (error) {
+			const reason = error?.message || "Check authorized JavaScript origin and retry.";
+			onError?.(`Could not start Google Sign-In: ${reason}`);
 		}
 	};
 
