@@ -1,100 +1,132 @@
-# Career Clarity 🚀
+# Career Clarity
 
-Career Clarity is a full-stack web application designed for comprehensive career guidance, offering users intuitive tests, powerful recommendations, and proactive opportunity alerts.
+[![React](https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5.4.15-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.17-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Status](https://img.shields.io/badge/Status-Active-brightgreen)]()
 
-## Architecture
+## Description
 
-This project is organized as a monorepo consisting of:
-- **`career-clarity-main/`**: The Frontend, built primarily with React, Vite, Tailwind CSS, and Axios.
-- **`career-clarity-backend/`**: The Backend, built with Django, equipped with robust integrations, APIs, and specialized modules.
+Career Clarity is a full-stack career guidance platform designed to help users make informed academic and professional decisions. The application combines a modern React frontend with a Django-based backend to deliver personalized insights, structured recommendations, and a clean user experience.
 
----
+## Live Demo
 
-## 🚀 Deployment Instructions
+Explore the deployed application here:
 
-### Backend Deployment (Render)
-1. Push this monorepo to GitHub.
-2. In Render, create a Blueprint from this repo's root (it will automatically pick `render.yaml`).
-3. Set the following required secret environment variables in the Render dashboard:
-   - `SECRET_KEY`
-   - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`
-   - `ALLOWED_HOSTS`
-   - `CORS_ALLOWED_ORIGINS`
-   - `CSRF_TRUSTED_ORIGINS`
-   - `OPENROUTER_API_KEY` (if used)
-   - `GOOGLE_CLIENT_ID` (if Google auth used)
-   - `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`
-4. Deploy the service.
-5. Create a superuser once from the Render shell:
-   ```bash
-   python manage.py createsuperuser
-   ```
+- [ADD LIVE DEMO LINK](https://career-clarity-three.vercel.app/)
 
-### Frontend Deployment (Vercel)
-1. Import the same GitHub repo in Vercel.
-2. Set the Root Directory to `career-clarity-main`.
-3. Add the following environment variable in the Vercel project:
-   `VITE_API_URL=https://<your-render-backend-domain>/api`
-4. Deploy.
+## Screenshots / UI Preview
 
-**Important Deployment Notes**:
-- Keep `DEBUG=False` in production.
-- Never commit real credentials in `.env` files.
-- If CORS/CSRF errors occur, verify the frontend URL is included in both `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS`.
+All UI images and screenshots will be stored inside the root-level `/components` folder, outside `src`.
 
----
+Use the following Markdown syntax to display images from that folder:
 
-## 🛠️ Advanced Modules & Features
-
-### 1. Test Page Implementation (`career-clarity-main`)
-
-A robust React frontend component suite orchestrating career guidance tests with stringent security constraints and seamless transitions.
-
-**Dynamic Flow**:
-Checks `GET /api/test/quick/` to navigate the user to either the Quick Test or the Skill Test, followed seamlessly by the Result Page.
-
-**Quick Test Features**:
-- 8 questions with multi-choice and timer (30 mins). Auto-submits on completion.
-
-**Skill Test Features**:
-- **Security Protocols**: 
-  - ✅ **Fullscreen mode enforced**
-  - ✅ **Copy/Paste disabled**
-  - ✅ **Right-click disabled**
-  - ✅ **Tab switching detection & warning**
-- 15 skill-based questions with a 45-minute countdown.
-
-**Result Display**:
-- Automatically categorizes users into three tiers (🌱 Beginner, 📈 Intermediate, 🚀 Advanced).
-- Generates dynamic career recommendations and AI-assisted capability insights from `GET /api/predict/`. 
-
-*Refer to the frontend source under `src/pages/TestPage.jsx` and `src/pages/TestResultPage.jsx` for granular integration details.*
-
----
-
-### 2. Alerts System Implementation (`career-clarity-backend`)
-
-The fully integrated, API-driven Alerts module tracks and routes relevant opportunities directly to users. 
-
-**Module Details (`alerts_module/`)**:
-Ingests data automatically using specialized fetchers via `requests` and `beautifulsoup4`:
-- **Internshala Fetcher**: Scrapes ~20 internship entries iteratively logic.
-- **Scholarships Fetcher**: Pulls from `scholarships.gov.in` and auto-levels users (`10 / 12 / UG`).
-- **Jobs Fetcher**: Queries Indeed for entry-level tasks.
-- *Fallback safety logic enabled across all fetchers ensuring zero system crashes on timeouts.*
-
-**Data Processing & API**:
-- **Endpoint**: `GET /api/alerts/` (JWT Authenticated)
-- Automatically assesses users based on extracted CV `tools` and `class_level`, scoring them by interest overlap (+5) and skill sets (+3). 
-- Top opportunities are labeled under "recommended".
-
-**How to run fetchers manually (Django Shell)**:
-```python
-from alerts_module.run_fetchers import run_all_fetchers
-run_all_fetchers() 
-# Success Output: {'internshala': 20, 'scholarships': 10, 'jobs': 2}
+```md
+![Homepage](components/homepage.png)
+![Dashboard](components/dashboard.png)
+![Mobile View](components/mobile-view.png)
 ```
 
----
+## Features
 
-*This README manages the architecture overview and has consolidated the historically segregated TEST_PAGE_IMPLEMENTATION, ALERTS_SYSTEM, and DEPLOY instructions into a single point of truth.*
+- Personalized career and academic guidance
+- Clean, responsive, and user-friendly interface
+- Modular frontend architecture for scalable UI development
+- Django backend for application logic and data handling
+- Ready for future enhancements such as analytics, recommendations, and content expansion
+
+## Tech Stack
+
+### Frontend
+
+- React 18
+- Vite
+- Tailwind CSS
+- React Router DOM
+- Axios
+
+### Backend
+
+- Django
+- Django REST-style architecture
+- Python
+
+## Installation
+
+### Prerequisites
+
+- Node.js and npm
+- Python 3.11 or compatible version
+- Git
+
+### Frontend Setup
+
+```bash
+git clone <your-repository-url>
+cd career-clarity/career-clarity-main
+npm install
+npm run dev
+```
+
+### Backend Setup
+
+```bash
+cd career-clarity/career-clarity-backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python manage.py runserver
+```
+
+## Usage
+
+1. Start the backend server.
+2. Start the frontend development server.
+3. Open the app in your browser and explore the available career clarity features.
+
+### Helpful Commands
+
+```bash
+# Frontend
+npm run dev
+npm run build
+npm run preview
+
+# Backend
+python manage.py runserver
+python manage.py migrate
+```
+
+## Folder Structure
+
+```text
+career-clarity/
+├── components/        → contains UI images/screenshots
+├── src/               → source code
+├── public/            → static assets
+├── career-clarity-backend/  → Django backend
+└── career-clarity-main/      → React frontend
+```
+
+## Future Improvements
+
+- Add more personalized recommendation logic
+- Expand analytics and progress tracking features
+- Improve accessibility across the interface
+- Add richer screenshots and product walkthroughs
+- Introduce automated testing for frontend and backend flows
+
+## Contributing
+
+Contributions are welcome. If you would like to improve the project:
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Make your changes with clear commits.
+4. Open a pull request describing your updates.
+
+Please keep contributions focused, well-documented, and consistent with the existing code style.
+
+## License
+
+This project does not currently include an open-source license. Add a license file before redistributing or open-sourcing the code.
